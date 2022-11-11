@@ -1,0 +1,19 @@
+---
+title: "Demographic Analysis"
+author: "Simon Hanzal"
+date: "11 11 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+knitr::opts_knit$set(root.dir = path)
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+demographic_data <- read_excel("demographic.xlsx")
+```
+
