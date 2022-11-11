@@ -4,16 +4,66 @@ author: "Simon Hanzal"
 date: "11 11 2022"
 output: html_document
 ---
+# Setup
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Modify path as needed depending on where the files are stored in your device
 path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
+library(broom)
 ```
 
-```{r}
+```{r load, echo=FALSE}
 demographic_data <- read_excel("demographic.xlsx")
+excluded = c(
+    
+)
+```
+
+
+```{r cleaning, echo=FALSE}
+demo_clean <- demographic_data %>%
+    filter(!is.na(ID)) %>%
+    # exclusions
+    filter(!ID %in% excluded) %>%
+    mutate(age_group = ifelse(age <= 50, "young", "older"))
+```
+
+# Description
+
+## Age
+
+``` {r age, echo=FALSE}
+age_information <- demo_clean %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(age), sd = sd(age), median = median(age), min = min(age), max = max(age), number = n())
+```
+
+## vas descrption
+
+```{r vas, echo=FALSE}
+prevas_information <- demo_clean %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(`pre-vas`), sd = sd(`pre-vas`), median = median(`pre-vas`), min = min(`pre-vas`), max = max(`pre-vas`), number = n())
+prevas_information
+
+postvas_information <- demo_clean %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(`post-vas`), sd = sd(`post-vas`), median = median(`pre-vas`), min = min(`post-vas`), max = max(`post-vas`), number = n())
+postvas_information
+
+vaschange_information <- demo_clean %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(`dif-vas`), sd = sd(`dif-vas`), median = median(`dif-vas`), min = min(`dif-vas`), max = max(`dif-vas`), number = n())
+vaschange_information
+```
+
+## vas test
+```{r}
+main_test <- t.test(demo_clean$`pre-vas`, demo_clean$`post-vas`, paired = FALSE)
+tidy(main_test)
 ```
 
