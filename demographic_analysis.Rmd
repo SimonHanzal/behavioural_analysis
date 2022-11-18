@@ -9,11 +9,13 @@ output: html_document
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+# path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
 library(broom)
+library(lme4)
 ```
 
 ```{r load, echo=FALSE}
@@ -34,7 +36,7 @@ demo_clean <- demographic_data %>%
 
 # Description
 
-## Age
+## Age description 80
 
 ``` {r age, echo=FALSE}
 age_information <- demo_clean %>%
@@ -42,7 +44,7 @@ age_information <- demo_clean %>%
     summarise(mean = mean(age), sd = sd(age), median = median(age), min = min(age), max = max(age), number = n())
 ```
 
-## vas descrption
+## vas description 80
 
 ```{r vas, echo=FALSE}
 prevas_information <- demo_clean %>%
@@ -61,9 +63,35 @@ vaschange_information <- demo_clean %>%
 vaschange_information
 ```
 
-## vas test
+## vas test 95
 ```{r}
 main_test <- t.test(demo_clean$`pre-vas`, demo_clean$`post-vas`, paired = FALSE)
 tidy(main_test)
+
+demo_clean_lm <- demo_clean %>%
+    pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
+    mutate(timepoint = recode(timepoint, "pre-vas" = 0, "post-vas" = 1)) %>%
+    select(ID, timepoint, vas)
+
+main_test_test <- lmer(timepoint ~ vas + (1 | ID), demo_clean_lm)
+summary(main_test_test)
+main_test_test
+
+library(afex)
+mod <- mixed(timepoint ~ vas + (1 | ID), type=3,method="KR",data=demo_clean_lm) 
+mod
 ```
 
+## vas export 90
+
+```{r}
+demo_export <- demo_clean %>%
+    mutate(subjective_difference = `dif-vas`) %>%
+    select(ID, subjective_difference)
+
+write.csv(demo_export, "subjective_difference.csv")
+```
+
+
+## vas plot 10
+Bring from elsewhere
