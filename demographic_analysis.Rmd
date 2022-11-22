@@ -21,7 +21,7 @@ library(lme4)
 ```{r load, echo=FALSE}
 demographic_data <- read_excel("demographic.xlsx")
 excluded = c(
-    
+    10004, 10006, 10502, 15004, 15508, 15509
 )
 ```
 

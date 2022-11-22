@@ -1,0 +1,111 @@
+---
+title: "Demographic Analysis"
+author: "Simon Hanzal"
+date: "11 11 2022"
+output: html_document
+---
+# Setup
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Modify path as needed depending on where the files are stored in your device
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+knitr::opts_knit$set(root.dir = path)
+library(tidyverse)
+library(readxl)
+library(broom)
+```
+
+```{r load, echo=FALSE}
+trial_data <- read_excel("behavioural.xlsx")
+excluded = c(
+   10004, 10006, 10502, 15004, 15508, 15509 
+)
+```
+
+# Removals
+## Participant level
+```{r cleaning, echo=FALSE}
+trial_data <- trial_data %>%
+    filter(!is.na(participant)) %>%
+    # exclusions
+    filter(!participant %in% excluded)
+```
+
+## Trial level
+
+
+
+### neural to behaviour
+```{r}
+neural_exclusions <- read_excel("data_removal_long.xlsx")
+
+neural_exclusions_intersect <- neural_exclusions %>%
+    select(participant, observation)
+
+trial_data <- trial_data %>%
+  filter(participant < 16000) %>%
+  filter(block >= 1.0 & block <= 8.0) %>%
+  group_by(participant) %>%
+  mutate(observation = 1:n()+1) %>%
+  select(participant, block, stimulus, observation, `Stimulus.RT`)
+
+neural_rt <- trial_data %>%
+    inner_join(neural_exclusions_intersect)
+
+```
+
+
+## Get cut-offs
+```{r}
+cut_off_young <- trial_data %>%
+    
+```
+
+
+# Cleaning
+```{r cleaning, echo=FALSE}
+anticipation_trials_sum <- trial_data %>%
+  filter(participant < 16000) %>%
+  filter(block >= 1.0 & block <= 8.0) %>%
+  group_by(participant) %>%
+  mutate(observation = 1:n()+1) %>%
+  select(participant, block, stimulus, observation, `Stimulus.RT`)
+  group_by(block) %>%
+  filter(Stimulus.RT <= 150) %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  summarise(n())
+overshot_trials_sum <- trial_data %>%
+  filter(participant < 16000) %>%
+  group_by(block) %>%
+  filter(block >= 1.0 & block <= 9.0) %>%
+  filter(Stimulus.RT >= cut_off) %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  summarise(n())
+```
+
+# Description
+```{r rt_sum, echo=FALSE}
+rt_sum <- beh_clean %>%
+  filter(participant < 16000) %>%
+  group_by(block) %>%
+  filter(block >= 1.0 & block <= 9.0) %>%
+  filter(Stimulus.RT >= 150) %>%
+  ungroup() %>%
+  group_by(block, participant) %>%
+  summarise(mean = mean(Stimulus.RT), sd = sd(Stimulus.RT),
+            min = min(Stimulus.RT), max = max(Stimulus.RT))
+rt_all_sum <- beh_clean %>%
+  filter(participant < 16000) %>%
+  group_by(block) %>%
+  filter(block >= 1.0 & block <= 9.0) %>%
+  filter(Stimulus.RT >= 150) %>%
+  ungroup() %>%
+  summarise(mean = mean(Stimulus.RT), sd = sd(Stimulus.RT),
+            min = min(Stimulus.RT), max = max(Stimulus.RT))
+cut_off <- pluck(rt_all_sum, 1) + pluck(rt_all_sum, 2)*3
+cut_off
+```
+
