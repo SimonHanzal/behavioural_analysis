@@ -27,85 +27,133 @@ excluded = c(
 ## Participant level
 ```{r cleaning, echo=FALSE}
 trial_data <- trial_data %>%
+    filter(participant < 16000) %>%
     filter(!is.na(participant)) %>%
     # exclusions
-    filter(!participant %in% excluded)
+    filter(!participant %in% excluded) %>%
+    filter(block >= 1.0 & block <= 8.0) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    group_by(participant) %>%
+    mutate(observation = 1:n()+1) %>%
+    ungroup()
+
+rt_data <- trial_data %>%
+    filter(condition == "Go") %>%
+    filter(Stimulus.ACC == 1)
+
+nogo_data <- trial_data %>%
+    filter(condition == "NoGo")
 ```
 
 ## Trial level
 
+### Behavioural to Neural
 
-
-### neural to behaviour
 ```{r}
-neural_exclusions <- read_excel("data_removal_long.xlsx")
-
-neural_exclusions_intersect <- neural_exclusions %>%
+behavioural_rejections <- rt_data %>%
+  group_by(block, age_group) %>%
+  mutate(mean_rt = mean(Stimulus.RT), sd_rt = sd(Stimulus.RT)) %>%
+  ungroup() %>%
+  select(participant, block, stimulus, age_group, observation, Stimulus.RT, mean_rt, sd_rt) %>%
+  filter(Stimulus.RT <= mean_rt-2*sd_rt | Stimulus.RT >= mean_rt+2*sd_rt)
+  
+behavioural_rejections_intersect <- behavioural_rejections %>%
     select(participant, observation)
 
-trial_data <- trial_data %>%
-  filter(participant < 16000) %>%
-  filter(block >= 1.0 & block <= 8.0) %>%
-  group_by(participant) %>%
-  mutate(observation = 1:n()+1) %>%
-  select(participant, block, stimulus, observation, `Stimulus.RT`)
-
-neural_rt <- trial_data %>%
-    inner_join(neural_exclusions_intersect)
-
+behavioural_rt <- rt_data %>%
+    anti_join(behavioural_rejections_intersect)
 ```
 
 
-## Get cut-offs
+
+### Neural to Behavioural
 ```{r}
-cut_off_young <- trial_data %>%
-    
+neural_rejections <- read_excel("data_removal_long.xlsx")
+
+neural_rejections_intersect <- neural_rejections %>%
+    select(participant, observation)
+
+neural_rt <- behavioural_rt %>%
+    inner_join(neural_rejections_intersect)
+
+neural_nogo <- nogo_data %>%
+    inner_join(neural_rejections_intersect)
+
 ```
 
-
-# Cleaning
-```{r cleaning, echo=FALSE}
-anticipation_trials_sum <- trial_data %>%
-  filter(participant < 16000) %>%
-  filter(block >= 1.0 & block <= 8.0) %>%
-  group_by(participant) %>%
-  mutate(observation = 1:n()+1) %>%
-  select(participant, block, stimulus, observation, `Stimulus.RT`)
-  group_by(block) %>%
-  filter(Stimulus.RT <= 150) %>%
-  ungroup() %>%
-  group_by(participant) %>%
-  summarise(n())
-overshot_trials_sum <- trial_data %>%
-  filter(participant < 16000) %>%
-  group_by(block) %>%
-  filter(block >= 1.0 & block <= 9.0) %>%
-  filter(Stimulus.RT >= cut_off) %>%
-  ungroup() %>%
-  group_by(participant) %>%
-  summarise(n())
-```
 
 # Description
+
+## Assumption check distribution
+
+## Summaries
+
 ```{r rt_sum, echo=FALSE}
-rt_sum <- beh_clean %>%
-  filter(participant < 16000) %>%
-  group_by(block) %>%
-  filter(block >= 1.0 & block <= 9.0) %>%
-  filter(Stimulus.RT >= 150) %>%
-  ungroup() %>%
-  group_by(block, participant) %>%
+rt_sum <- neural_rt %>%
+  group_by(block, age_group) %>%
   summarise(mean = mean(Stimulus.RT), sd = sd(Stimulus.RT),
-            min = min(Stimulus.RT), max = max(Stimulus.RT))
-rt_all_sum <- beh_clean %>%
-  filter(participant < 16000) %>%
-  group_by(block) %>%
-  filter(block >= 1.0 & block <= 9.0) %>%
-  filter(Stimulus.RT >= 150) %>%
-  ungroup() %>%
-  summarise(mean = mean(Stimulus.RT), sd = sd(Stimulus.RT),
-            min = min(Stimulus.RT), max = max(Stimulus.RT))
-cut_off <- pluck(rt_all_sum, 1) + pluck(rt_all_sum, 2)*3
-cut_off
+            min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n())
+
+# calculate change score
+rt_change_sum <- rt_sum
+  
+# calculate accuracy score more cleverly
+summary_nogo2 <- data %>%
+  filter(participant < 15000) %>%
+  group_by(participant, block) %>%
+  filter(condition == "NoGo") %>%
+  filter(block >= 1.0) %>%
+  count(Stimulus.ACC) %>%
+  mutate(proportion = round(n/18,4)) %>%
+  filter(Stimulus.ACC == 1) %>%
+  mutate(proportion = proportion*100) %>%
+  filter(block == 8) %>%
+  select(-block) %>%
+  select(participant, proportion) %>%
+  inner_join(y = summary_nogo, by = "participant") %>%
+  mutate(difference = proportion.x - proportion.y)
+
+# calculate accuracy change
+
+# assemble
+
+# has age, vas_change, err_change, rt_change, mean_rt, mean_err and space for alpha_change
+
+all_data <- rt_data
 ```
+
+# Plotting
+
+# Modelling
+
+## Confirmation t-test for changes
+```{r}
+# vas change
+
+# rt change
+
+# error change
+```
+
+
+## Main models
+```{r}
+# error
+
+# error_model <- lm(
+# err ~ age * vas change * rt * rt change x ? Error change,
+# model_data
+#)
+
+# error_change_model <- lm(
+# err_change ~ age * vas change * rt * rt change x ? Error,
+# model_data
+#)
+```
+
+```{r}
+# Look for brain and behaviour link
+#brain_behaviour_model <- lm(vas ~ block_change, model_data)
+```
+
 
