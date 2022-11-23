@@ -14,6 +14,7 @@ knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
 library(broom)
+library(viridis)
 ```
 
 ```{r load, echo=FALSE}
@@ -101,6 +102,13 @@ rt <- neural_rt %>%
   summarise(rt = mean(log(Stimulus.RT)), sd = sd(log(Stimulus.RT)),
             min = min(log(Stimulus.RT)), max = max(log(Stimulus.RT)), trials = n())
 
+rt_natural <- neural_rt %>%
+  group_by(block, participant) %>%
+  summarise(rt = mean(Stimulus.RT), sd = sd(Stimulus.RT),
+            min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n()) %>%
+  mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+  
+
 # calculate change score
 rt_change <-  rt %>%
   filter(block == 1 | block == 8) %>%
@@ -121,6 +129,12 @@ err <- nogo_data %>%
   mutate(block_total = sum(n)) %>%
   filter(Stimulus.ACC == 1) %>%
   mutate(err = (1 - (n/block_total) ) * 100)
+
+err_summary <- err %>%
+  mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+  group_by(block, age_group) %>%
+    summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
 
 err_change <- err %>%
   filter(block == 1 | block == 8) %>%
@@ -155,8 +169,6 @@ all_data <- inner_join(
   inner_join(vas_change, by="participant") %>%
   mutate(age_group = ifelse(participant >= 10600, 1, 0))
 ```
-
-# Plotting
 
 # Modelling
 
@@ -200,9 +212,85 @@ summary(error_change_model)
 ```
 
 ```{r}
+# neural_data <- read_csv("neural_data.csv") %>%
+# all_data <- all_data %>%
+# inner_join(neural_data, by="participant")
 # Look for brain and behaviour link
 
-#brain_behaviour_model <- lm(vas ~ block_change, model_data)
+#brain_behaviour_model <- lm(vas_change ~ block_change, all_data)
+```
+
+# Plotting
+
+```{r}
+plot_nogo_young <- ggplot(filter(err, participant <= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.6) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  #scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_nogo_older <- ggplot(filter(err, participant >= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 3) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  #scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_nogo_young
+plot_nogo_older
+path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+
+```
+
+```{r}
+plot_rt_young <- ggplot(filter(rt_natural, age_group=="young"), aes(x = as.factor(block), y = as.numeric(rt), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Reaction Time change") +
+  xlab("Block") +
+  ylab("Reaction Time (ms)") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_rt_older <- ggplot(filter(rt_natural, age_group=="older"), aes(x = as.factor(block), y = as.numeric(rt), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Reaction Time change") +
+  xlab("Block") +
+  ylab("Reaction Time (ms)") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_rt_young
+plot_rt_older
+ggsave(plot_rt_young, filename = 'rt_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+plot_rt_older
+ggsave(plot_rt_older, filename = 'rt_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ```
 
 

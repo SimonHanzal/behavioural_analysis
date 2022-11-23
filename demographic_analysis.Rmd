@@ -70,7 +70,7 @@ tidy(main_test)
 
 demo_clean_lm <- demo_clean %>%
     pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
-    mutate(timepoint = recode(timepoint, "pre-vas" = 0, "post-vas" = 1)) %>%
+    mutate(timepoint = recode(timepoint, "pre-vas" = 1, "post-vas" = 0)) %>%
     select(ID, timepoint, vas)
 
 main_test_test <- lmer(timepoint ~ vas + (1 | ID), demo_clean_lm)
@@ -95,3 +95,42 @@ write.csv(demo_export, "subjective_difference.csv")
 
 ## vas plot 10
 Bring from elsewhere
+
+```{r}
+plot_vas_young <- ggplot(filter(demo_clean_lm, ID <= 10600), aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(timepoint))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Subjective Fatigue change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
+  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_vas_older <- ggplot(filter(demo_clean_lm, ID >= 10600), aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(timepoint))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Subjective Fatigue change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
+  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+
+plot_vas_young
+plot_vas_older
+path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+ggsave(plot_vas_young, filename = 'vas_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_vas_older, filename = 'vas_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+
+```
+
