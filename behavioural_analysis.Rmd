@@ -56,6 +56,7 @@ behavioural_rejections <- rt_data %>%
   ungroup() %>%
   select(participant, block, stimulus, age_group, observation, Stimulus.RT, mean_rt, sd_rt) %>%
   filter(Stimulus.RT <= mean_rt-2*sd_rt | Stimulus.RT >= mean_rt+2*sd_rt)
+write.csv(behavioural_rejections, "behavioural_rejections.csv")
   
 behavioural_rejections_intersect <- behavioural_rejections %>%
     select(participant, observation)
@@ -86,40 +87,73 @@ neural_nogo <- nogo_data %>%
 
 ## Assumption check distribution
 
+```{r}
+hist(log(neural_rt$Stimulus.RT))
+# log_transform necessary
+```
+
+
 ## Summaries
 
 ```{r rt_sum, echo=FALSE}
-rt_sum <- neural_rt %>%
-  group_by(block, age_group) %>%
-  summarise(mean = mean(Stimulus.RT), sd = sd(Stimulus.RT),
-            min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n())
+rt <- neural_rt %>%
+  group_by(block, participant) %>%
+  summarise(rt = mean(log(Stimulus.RT)), sd = sd(log(Stimulus.RT)),
+            min = min(log(Stimulus.RT)), max = max(log(Stimulus.RT)), trials = n())
 
 # calculate change score
-rt_change_sum <- rt_sum
+rt_change <-  rt %>%
+  filter(block == 1 | block == 8) %>%
+  select(participant, block, rt) %>%
+  pivot_wider(names_from = block, values_from = rt) %>%
+  mutate(rt_change = `8` - `1`) %>%
+  select(participant, rt_change)
+
+rt_overall <- rt %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  summarise(rt_overall = mean(rt))
   
 # calculate accuracy score more cleverly
-summary_nogo2 <- data %>%
-  filter(participant < 15000) %>%
+err <- nogo_data %>%
   group_by(participant, block) %>%
-  filter(condition == "NoGo") %>%
-  filter(block >= 1.0) %>%
   count(Stimulus.ACC) %>%
-  mutate(proportion = round(n/18,4)) %>%
+  mutate(block_total = sum(n)) %>%
   filter(Stimulus.ACC == 1) %>%
-  mutate(proportion = proportion*100) %>%
-  filter(block == 8) %>%
-  select(-block) %>%
-  select(participant, proportion) %>%
-  inner_join(y = summary_nogo, by = "participant") %>%
-  mutate(difference = proportion.x - proportion.y)
+  mutate(err = (1 - (n/block_total) ) * 100)
+
+err_change <- err %>%
+  filter(block == 1 | block == 8) %>%
+  select(participant, block, err) %>%
+  pivot_wider(names_from = block, values_from = err) %>%
+  mutate(err_change = `8` - `1`) %>%
+  select(participant, err_change)
+
+err_overall <- err %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  summarise(err_overall = mean(err))
+  
 
 # calculate accuracy change
 
 # assemble
 
 # has age, vas_change, err_change, rt_change, mean_rt, mean_err and space for alpha_change
+vas_change <- read_csv("subjective_difference.csv") %>%
+  mutate(participant = ID, vas_change = subjective_difference) %>%
+  select(participant, vas_change)
 
-all_data <- rt_data
+all_data <- inner_join(
+  inner_join(
+  rt_change, rt_overall, by="participant"
+  ),
+  inner_join(
+  err_change, err_overall, by="participant"
+  ), by="participant"
+) %>%
+  inner_join(vas_change, by="participant") %>%
+  mutate(age_group = ifelse(participant >= 10600, 1, 0))
 ```
 
 # Plotting
@@ -128,11 +162,22 @@ all_data <- rt_data
 
 ## Confirmation t-test for changes
 ```{r}
-# vas change
-
 # rt change
+rt_test <-rt %>%
+  filter(block == 1 | block == 8) %>%
+  select(participant, block, rt) %>%
+  pivot_wider(names_from = block, values_from = rt)
 
+rt_test <- t.test(rt_test$`1`, rt_test$`8`, paired = TRUE)
+tidy(rt_test)
 # error change
+err_test <- err %>%
+  filter(block == 1 | block == 8) %>%
+  select(participant, block, err) %>%
+  pivot_wider(names_from = block, values_from = err)
+
+err_test <- t.test(err_test$`1`, err_test$`8`, paired = TRUE)
+tidy(err_test)
 ```
 
 
@@ -140,19 +185,23 @@ all_data <- rt_data
 ```{r}
 # error
 
-# error_model <- lm(
-# err ~ age * vas change * rt * rt change x ? Error change,
-# model_data
-#)
+# Think about the interactions
+error_model <- lm(
+err_overall ~ age_group + vas_change + rt_overall + rt_change + err_change,
+all_data
+)
+summary(error_model)
 
-# error_change_model <- lm(
-# err_change ~ age * vas change * rt * rt change x ? Error,
-# model_data
-#)
+error_change_model <- lm(
+err_change ~ age_group + vas_change + rt_overall + rt_change + err_overall,
+all_data
+)
+summary(error_change_model)
 ```
 
 ```{r}
 # Look for brain and behaviour link
+
 #brain_behaviour_model <- lm(vas ~ block_change, model_data)
 ```
 
