@@ -9,12 +9,16 @@ output: html_document
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+# path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
 library(broom)
 library(viridis)
+library(ez)
+library(lme4)
+library(lmerTest )
 ```
 
 ```{r load, echo=FALSE}
@@ -70,7 +74,7 @@ behavioural_rt <- rt_data %>%
 
 ### Neural to Behavioural
 ```{r}
-neural_rejections <- read_excel("data_removal_long.xlsx")
+neural_rejections <- read_excel("data_removal_long_f.xlsx")
 
 neural_rejections_intersect <- neural_rejections %>%
     select(participant, observation)
@@ -121,6 +125,12 @@ rt_overall <- rt %>%
   ungroup() %>%
   group_by(participant) %>%
   summarise(rt_overall = mean(rt))
+
+rt_anova <- rt %>%
+      mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    filter(block == 1 | block == 8) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    mutate(block = recode(block, "1" = 0, "8" = 1))
   
 # calculate accuracy score more cleverly
 err <- nogo_data %>%
@@ -147,6 +157,12 @@ err_overall <- err %>%
   ungroup() %>%
   group_by(participant) %>%
   summarise(err_overall = mean(err))
+
+err_anova <- err %>%
+      mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    filter(block == 1 | block == 8) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    mutate(block = recode(block, "1" = 0, "8" = 1))
   
 
 # calculate accuracy change
@@ -219,6 +235,50 @@ summary(error_change_model)
 
 #brain_behaviour_model <- lm(vas_change ~ block_change, all_data)
 ```
+
+```{r}
+model <- t.test(all_data$age_group, all_data$err_overall, within = FALSE, anternative = "greater")
+tidy(model)
+
+# err_anova <- err_anova %>%
+#     filter(participant > 10001)
+
+model <- ezANOVA(
+	err_anova
+	, dv = err
+	, wid = participant
+	, within = as.factor(block)
+	, between = as.factor(age_group)
+
+)
+model
+
+
+model <- lmer(err ~ block * age_group + (1 | participant), err_anova)
+summary(model)
+anova(model)
+
+model <- lmer(rt ~ block * age_group + (1 | participant), rt_anova)
+summary(model)
+anova(model)
+
+vas_anova <- demo_clean_lm %>%
+    mutate(age_group = ifelse(ID >= 10600, 1, 0))
+
+wan_anova <- demo_clean_wan %>%
+    mutate(age_group = ifelse(ID >= 10600, 1, 0))
+
+comparison <- lm(vas ~ timepoint * age_group, vas_anova)
+summary(model)
+
+model <- lmer(vas ~ timepoint * age_group + (1 | ID), vas_anova)
+summary(model)
+#anova(model,comparison)
+
+model <- lmer(wan ~ timepoint * age_group + (1 | ID), wan_anova)
+summary(model)
+```
+
 
 # Plotting
 

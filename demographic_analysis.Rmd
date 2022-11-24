@@ -61,6 +61,11 @@ vaschange_information <- demo_clean %>%
     group_by(age_group) %>%
     summarise(mean = mean(`dif-vas`), sd = sd(`dif-vas`), median = median(`dif-vas`), min = min(`dif-vas`), max = max(`dif-vas`), number = n())
 vaschange_information
+
+wanchange_information <- demo_clean %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(`dif-wan`), sd = sd(`dif-wan`), median = median(`dif-wan`), min = min(`dif-wan`), max = max(`dif-wan`), number = n())
+wanchange_information
 ```
 
 ## vas test 95
@@ -72,6 +77,11 @@ demo_clean_lm <- demo_clean %>%
     pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
     mutate(timepoint = recode(timepoint, "pre-vas" = 1, "post-vas" = 0)) %>%
     select(ID, timepoint, vas)
+
+demo_clean_wan <- demo_clean %>%
+    pivot_longer(c(`pre-wan`, `post-wan`), names_to = "timepoint", values_to = "wan") %>%
+    mutate(timepoint = recode(timepoint, "pre-wan" = 1, "post-wan" = 0)) %>%
+    select(ID, timepoint, wan)
 
 main_test_test <- lmer(timepoint ~ vas + (1 | ID), demo_clean_lm)
 summary(main_test_test)
