@@ -16,6 +16,7 @@ library(tidyverse)
 library(readxl)
 library(broom)
 library(lme4)
+library(psych)
 ```
 
 ```{r load, echo=FALSE}
@@ -66,6 +67,29 @@ wanchange_information <- demo_clean %>%
     group_by(age_group) %>%
     summarise(mean = mean(`dif-wan`), sd = sd(`dif-wan`), median = median(`dif-wan`), min = min(`dif-wan`), max = max(`dif-wan`), number = n())
 wanchange_information
+
+pre_wan_alpha <-  demo_clean %>%
+    select(pre_wan_1:pre_wan_4) %>%
+    psych::alpha()
+pre_wan_alpha
+
+post_wan_alpha <-  demo_clean %>%
+    select(post_wan_1:post_wan_4) %>%
+    psych::alpha()
+post_wan_alpha
+
+pre_vas_alpha <-  demo_clean %>%
+    select(pre_vas_1:pre_vas_13) %>%
+    psych::alpha()
+pre_vas_alpha
+
+post_vas_alpha <-  demo_clean %>%
+    select(post_vas_1:post_vas_13) %>%
+    psych::alpha()
+post_vas_alpha
+        
+
+post_wan_alpha
 ```
 
 ## vas test 95
@@ -80,7 +104,7 @@ demo_clean_lm <- demo_clean %>%
 
 demo_clean_wan <- demo_clean %>%
     pivot_longer(c(`pre-wan`, `post-wan`), names_to = "timepoint", values_to = "wan") %>%
-    mutate(timepoint = recode(timepoint, "pre-wan" = 1, "post-wan" = 0)) %>%
+    mutate(timepoint = recode(timepoint, "pre-wan" = 0, "post-wan" = 1)) %>%
     select(ID, timepoint, wan)
 
 main_test_test <- lmer(timepoint ~ vas + (1 | ID), demo_clean_lm)
@@ -138,9 +162,49 @@ plot_vas_older <- ggplot(filter(demo_clean_lm, ID >= 10600), aes(x = as.factor(t
 
 plot_vas_young
 plot_vas_older
-path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 ggsave(plot_vas_young, filename = 'vas_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ggsave(plot_vas_older, filename = 'vas_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+
+```
+
+```{r}
+plot_wan_young <- ggplot(filter(demo_clean_wan, ID <= 10600), aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(timepoint))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Mind-wandering change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
+  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_wan_older <- ggplot(filter(demo_clean_wan, ID >= 10600), aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(timepoint))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Mind-wandering change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
+  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+
+plot_wan_young
+plot_wan_older
+#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ggsave(plot_wan_young, filename = 'wan_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_wan_older, filename = 'wan_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
 ```
 

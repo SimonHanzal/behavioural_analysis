@@ -61,7 +61,12 @@ behavioural_rejections <- rt_data %>%
   ungroup() %>%
   select(participant, block, stimulus, age_group, observation, Stimulus.RT, mean_rt, sd_rt) %>%
   filter(Stimulus.RT <= mean_rt-2*sd_rt | Stimulus.RT >= mean_rt+2*sd_rt)
-write.csv(behavioural_rejections, "behavioural_rejections.csv")
+
+behavioural_rejections_specific <- behavioural_rejections %>%
+    filter(!participant %in% excluded) %>%
+    filter(observation < 91 | observation > 625)
+
+write.csv(behavioural_rejections_specific, "behavioural_rejections.csv")
   
 behavioural_rejections_intersect <- behavioural_rejections %>%
     select(participant, observation)
@@ -228,12 +233,48 @@ summary(error_change_model)
 ```
 
 ```{r}
-# neural_data <- read_csv("neural_data.csv") %>%
-# all_data <- all_data %>%
-# inner_join(neural_data, by="participant")
+neural_data <- read_xlsx("neural_summary.xlsx") %>%
+    inner_join(all_data, by="participant")
+
+neural_data <- neural_data %>%
+    mutate(block_change_beta = last_beta-first_beta, block_change_alpha = last_alpha - first_alpha)
 # Look for brain and behaviour link
 
-#brain_behaviour_model <- lm(vas_change ~ block_change, all_data)
+wan_addition <- demo_clean_wan %>%
+    pivot_wider(names_from ="timepoint", values_from = "wan") %>%
+    mutate(wan_change = `1` - `0`, participant = ID) %>%
+    select(participant, wan_change)
+neural_data <- neural_data %>%
+    inner_join(wan_addition, "participant")
+
+model <- lm(err_change ~ block_change_beta*age_group, neural_data)
+summary(model)
+
+model <- lm(err_change ~ block_change_alpha, neural_data)
+summary(model)
+
+model <- lm(wan_change ~ block_change_alpha*age_group, neural_data)
+summary(model)
+
+model <- lm(wan_change ~ block_change_beta*age_group, neural_data)
+summary(model)
+
+neural_data_long_alpha <- neural_data %>%
+    pivot_longer(first_alpha:last_alpha, "block","value")
+
+neural_data_long_beta <- neural_data %>%
+    pivot_longer(first_beta:last_beta, "block","value")
+
+model <- lm(value ~ block, neural_data_long_alpha)
+summary(model)
+
+model <- lm(value ~ block, neural_data_long_beta)
+summary(model)
+
+
+model <- lm(block_change_alpha ~ block_change_beta, neural_data_long_beta)
+summary(model)
+
 ```
 
 ```{r}
@@ -262,6 +303,9 @@ model <- lmer(rt ~ block * age_group + (1 | participant), rt_anova)
 summary(model)
 anova(model)
 
+model <- lm(rt_overall ~ err_overall*age_group, all_data)
+summary(model)
+
 vas_anova <- demo_clean_lm %>%
     mutate(age_group = ifelse(ID >= 10600, 1, 0))
 
@@ -288,13 +332,13 @@ plot_nogo_young <- ggplot(filter(err, participant <= 10600), aes(x = as.factor(b
   geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
   geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
   stat_summary(fun.y="median") +
-  ggtitle("Older - Commission Error") +
+  ggtitle("Young - Commission Error") +
   xlab("Block") +
   ylab("Commission Error") +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
-  #scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
 plot_nogo_older <- ggplot(filter(err, participant >= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
@@ -308,12 +352,13 @@ plot_nogo_older <- ggplot(filter(err, participant >= 10600), aes(x = as.factor(b
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
-  #scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
 plot_nogo_young
 plot_nogo_older
-path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+# path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation\newer_plots)"
 ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
@@ -330,6 +375,7 @@ plot_rt_young <- ggplot(filter(rt_natural, age_group=="young"), aes(x = as.facto
   ylab("Reaction Time (ms)") +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_y_continuous(limits = c(250, 1000)) +
   scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
@@ -343,14 +389,118 @@ plot_rt_older <- ggplot(filter(rt_natural, age_group=="older"), aes(x = as.facto
   ylab("Reaction Time (ms)") +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_y_continuous(limits = c(250, 1000)) +
   scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
 plot_rt_young
 plot_rt_older
 ggsave(plot_rt_young, filename = 'rt_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
-plot_rt_older
 ggsave(plot_rt_older, filename = 'rt_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ```
 
+```{r}
+model <- lm(err_change ~ block_change_alpha, neural_data)
+summary(model)
 
+hist(neural_data$err_change)
+
+hist(neural_data$block_change_alpha)
+
+plot_brain_behaviour <- ggplot(neural_data, aes(block_change_alpha, err_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE)
+
+plot_brain_behaviour
+
+plot_trade_off <- ggplot(all_data, aes(rt_change, err_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE)
+
+plot_trade_off
+
+model <- lm(value ~ block, filter(neural_data_long_beta, participant <= 10600))
+summary(model)
+```
+
+```{r}
+plot_alpha_young <- ggplot(filter(neural_data_long_alpha, participant <= 10600), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Alpha change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "C") +
+  scale_fill_viridis_d(option = "C", begin = 0, end = 1) +
+  #scale_x_discrete(labels=c("1" = "First Block", "0" = "Last block"), limits=rev) +
+  ylim(0,3) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_alpha_older <- ggplot(filter(neural_data_long_alpha, participant >= 10600), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Alpha change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "C") +
+  scale_fill_viridis_d(option = "C", begin = 0, end = 1) +
+  #scale_x_discrete(labels=c("1" = "First Block", "0" = "Last block"), limits=rev) +
+  ylim(0,3) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+
+plot_alpha_young
+plot_alpha_older
+#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ggsave(plot_alpha_young, filename = 'alpha_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_alpha_older, filename = 'alpha_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+
+```
+
+```{r}
+plot_beta_young <- ggplot(filter(neural_data_long_beta, participant <= 10600), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Beta change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "E") +
+  scale_fill_viridis_d(option = "E", begin = 0, end = 1) +
+  #scale_x_discrete(labels=c("1" = "First Block", "0" = "Last block"), limits=rev) +
+  ylim(0,3) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_beta_older <- ggplot(filter(neural_data_long_beta, participant >= 10600), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Beta change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "E") +
+  scale_fill_viridis_d(option = "E", begin = 0, end = 1) +
+  #scale_x_discrete(labels=c("1" = "First Block", "0" = "Last block"), limits=rev) +
+  ylim(0,3) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+
+plot_beta_young
+plot_beta_older
+#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ggsave(plot_beta_young, filename = 'newer_plots/beta_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_beta_older, filename = 'newer_plots/beta_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+
+```
