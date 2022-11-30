@@ -7,10 +7,11 @@ output: html_document
 # Setup
 
 ```{r setup, include=FALSE, echo=FALSE}
+# Pathsetting and package loading
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-# path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+# path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
@@ -18,10 +19,11 @@ library(broom)
 library(viridis)
 library(ez)
 library(lme4)
-library(lmerTest )
+library(lmerTest)
 ```
 
 ```{r load, echo=FALSE}
+# # Main Data Loading
 trial_data <- read_excel("behavioural.xlsx")
 excluded = c(
    10004, 10006, 10502, 15004, 15508, 15509 
@@ -31,6 +33,7 @@ excluded = c(
 # Removals
 ## Participant level
 ```{r cleaning, echo=FALSE}
+# Main cleaning
 trial_data <- trial_data %>%
     filter(participant < 16000) %>%
     filter(!is.na(participant)) %>%
@@ -41,11 +44,11 @@ trial_data <- trial_data %>%
     group_by(participant) %>%
     mutate(observation = 1:n()+1) %>%
     ungroup()
-
+# Keeping only correct go trials for further RT analysis
 rt_data <- trial_data %>%
     filter(condition == "Go") %>%
     filter(Stimulus.ACC == 1)
-
+# Whilst keeping all for error analysis
 nogo_data <- trial_data %>%
     filter(condition == "NoGo")
 ```
@@ -75,8 +78,6 @@ behavioural_rt <- rt_data %>%
     anti_join(behavioural_rejections_intersect)
 ```
 
-
-
 ### Neural to Behavioural
 ```{r}
 neural_rejections <- read_excel("data_removal_long_f.xlsx")
@@ -92,10 +93,9 @@ neural_nogo <- nogo_data %>%
 
 ```
 
-
 # Description
 
-## Assumption check distribution
+## Assumption checks
 
 ```{r}
 hist(log(neural_rt$Stimulus.RT))
@@ -105,6 +105,7 @@ hist(log(neural_rt$Stimulus.RT))
 
 ## Summaries
 
+### RT 
 ```{r rt_sum, echo=FALSE}
 rt <- neural_rt %>%
   group_by(block, participant) %>%
@@ -136,7 +137,11 @@ rt_anova <- rt %>%
     filter(block == 1 | block == 8) %>%
     mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
     mutate(block = recode(block, "1" = 0, "8" = 1))
-  
+```
+
+### Error
+
+``` {r }
 # calculate accuracy score more cleverly
 err <- nogo_data %>%
   group_by(participant, block) %>%
@@ -168,10 +173,11 @@ err_anova <- err %>%
     filter(block == 1 | block == 8) %>%
     mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
     mutate(block = recode(block, "1" = 0, "8" = 1))
-  
+```  
 
-# calculate accuracy change
+## Assembly
 
+``` {r}
 # assemble
 
 # has age, vas_change, err_change, rt_change, mean_rt, mean_err and space for alpha_change
@@ -189,6 +195,33 @@ all_data <- inner_join(
 ) %>%
   inner_join(vas_change, by="participant") %>%
   mutate(age_group = ifelse(participant >= 10600, 1, 0))
+
+neural_data <- read_xlsx("neural_summary.xlsx") %>%
+    inner_join(all_data, by="participant")
+
+neural_data <- neural_data %>%
+    mutate(block_change_beta = last_beta-first_beta, block_change_alpha = last_alpha - first_alpha)
+# Look for brain and behaviour link
+
+wan_addition <- demo_clean_wan %>%
+    pivot_wider(names_from ="timepoint", values_from = "wan") %>%
+    mutate(wan_change = `1` - `0`, participant = ID) %>%
+    select(participant, wan_change)
+neural_data <- neural_data %>%
+    inner_join(wan_addition, "participant")
+
+
+neural_data_long_alpha <- neural_data %>%
+    pivot_longer(first_alpha:last_alpha, "block","value")
+
+neural_data_long_beta <- neural_data %>%
+    pivot_longer(first_beta:last_beta, "block","value")
+
+vas_anova <- demo_clean_lm %>%
+    mutate(age_group = ifelse(ID >= 10600, 1, 0))
+
+wan_anova <- demo_clean_wan %>%
+    mutate(age_group = ifelse(ID >= 10600, 1, 0))
 ```
 
 # Modelling
@@ -196,7 +229,7 @@ all_data <- inner_join(
 ## Confirmation t-test for changes
 ```{r}
 # rt change
-rt_test <-rt %>%
+rt_test <- rt %>%
   filter(block == 1 | block == 8) %>%
   select(participant, block, rt) %>%
   pivot_wider(names_from = block, values_from = rt)
@@ -214,38 +247,169 @@ tidy(err_test)
 ```
 
 
-## Main models
+## Pre-registered models
+
+### Simple
+
+#### 1c Neural change
+``` {r }
+model <- ezANOVA(
+	neural_data_long_beta
+	, dv = value
+	, wid = participant
+	, within = block
+	, between = age_group
+)
+model
+
+model <- ezANOVA(
+	neural_data_long_alpha
+	, dv = value
+	, wid = participant
+	, within = block
+	, between = age_group
+
+)
+model
+```
+
+
+#### 3a Age effect
+```{r}
+
+model <- t.test(all_data$age_group, all_data$err_overall, within = FALSE, anternative = "greater")
+tidy(model)
+
+# err_anova <- err_anova %>%
+#     filter(participant > 10001)
+```
+
+#### 4a Error
+```{r }
+model <- ezANOVA(
+	err_anova,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+#### 4b RTs
+```{r }
+model <- ezANOVA(
+	rt_anova,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+#### 4c VAS
+```{r }
+model <- ezANOVA(
+	rt_anova,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+#### 4d WAN
+
+```{r }
+model <- ezANOVA(
+	rt_anova,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+#### 4E Neural
+
+```{r }
+model <- ezANOVA(
+	alpha,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+```{r }
+model <- ezANOVA(
+	beta,
+	dv = err,
+	wid = participant,
+	within = as.factor(block),
+    between = as.factor(age_group)
+)
+model
+```
+
+### Complex reconstructions
+
+```{r}
+model <- lmer(err ~ block * age_group + (1 | participant), err_anova)
+summary(model)
+
+model <- lmer(rt ~ block * age_group + (1 | participant), rt_anova)
+summary(model)
+
+model <- lm(rt_overall ~ err_overall*age_group, all_data)
+summary(model)
+
+comparison <- lm(vas ~ timepoint * age_group, vas_anova)
+summary(model)
+
+model <- lmer(vas ~ timepoint * age_group + (1 | ID), vas_anova)
+summary(model)
+#anova(model,comparison)
+
+model <- lmer(wan ~ timepoint * age_group + (1 | ID), wan_anova)
+summary(model)
+```
+
+### Confirmations
+```{r}
+
+
+model <- t.test(as.numeric(neural_data_long_beta$value), neural_data_long_beta$time, paired = TRUE)
+tidy(model)
+
+model <- lm(time ~ value + (1 | participant), neural_data_long_beta)
+summary(model)
+```
+
+
+## Hierarchical exploration
+
+### Error
 ```{r}
 # error
 
 # Think about the interactions
-error_model <- lm(
-err_overall ~ age_group + vas_change + rt_overall + rt_change + err_change,
-all_data
-)
+model <- lm(err_overall ~ age_group + vas_change + rt_overall + rt_change + err_change,
+all_data)
 summary(error_model)
-
-error_change_model <- lm(
-err_change ~ age_group + vas_change + rt_overall + rt_change + err_overall,
-all_data
-)
-summary(error_change_model)
 ```
 
+### Error change
 ```{r}
-neural_data <- read_xlsx("neural_summary.xlsx") %>%
-    inner_join(all_data, by="participant")
 
-neural_data <- neural_data %>%
-    mutate(block_change_beta = last_beta-first_beta, block_change_alpha = last_alpha - first_alpha)
-# Look for brain and behaviour link
-
-wan_addition <- demo_clean_wan %>%
-    pivot_wider(names_from ="timepoint", values_from = "wan") %>%
-    mutate(wan_change = `1` - `0`, participant = ID) %>%
-    select(participant, wan_change)
-neural_data <- neural_data %>%
-    inner_join(wan_addition, "participant")
+model <- lm(err_change ~ age_group + vas_change + rt_overall + rt_change + err_overall,
+all_data)
+summary(model)
 
 model <- lm(err_change ~ block_change_beta*age_group, neural_data)
 summary(model)
@@ -259,110 +423,104 @@ summary(model)
 model <- lm(wan_change ~ block_change_beta*age_group, neural_data)
 summary(model)
 
-neural_data_long_alpha <- neural_data %>%
-    pivot_longer(first_alpha:last_alpha, "block","value")
-
-neural_data_long_beta <- neural_data %>%
-    pivot_longer(first_beta:last_beta, "block","value")
-
 model <- lm(value ~ block, neural_data_long_alpha)
 summary(model)
 
 model <- lm(value ~ block, neural_data_long_beta)
 summary(model)
 
-
 model <- lm(block_change_alpha ~ block_change_beta, neural_data_long_beta)
 summary(model)
 
 ```
 
+## Neural links
+
+### Indeces
+
 ```{r}
-model <- t.test(all_data$age_group, all_data$err_overall, within = FALSE, anternative = "greater")
-tidy(model)
 
-# err_anova <- err_anova %>%
-#     filter(participant > 10001)
+neural_data_bin <- neural_data %>%
+    mutate(beta_change = ifelse(block_change_beta > median(block_change_beta), 1, 0)) %>%
+    mutate(alpha_change = ifelse(block_change_alpha > median(block_change_alpha), 1, 0))
 
-model <- ezANOVA(
-	err_anova
-	, dv = err
-	, wid = participant
-	, within = as.factor(block)
-	, between = as.factor(age_group)
+neural_data_long_beta <- neural_data_long_beta %>%
+    mutate(age_group = ifelse(age_group == 0, "young", "older"))
+    # filter(participant > 10001)
 
-)
-model
+neural_data_long_alpha <- neural_data_long_alpha %>%
+    mutate(age_group = ifelse(age_group == 0, "young", "older"))
+    # filter(participant > 10001)
+```
 
+### Modelling
 
-model <- lmer(err ~ block * age_group + (1 | participant), err_anova)
+```{r}
+model <- lm(err_change ~ block_change_alpha, neural_data)
 summary(model)
-anova(model)
-
-model <- lmer(rt ~ block * age_group + (1 | participant), rt_anova)
+#!!
+model <- lm(block_change_alpha ~ block_change_beta * vas_change * age_group, neural_data)
 summary(model)
-anova(model)
+#!!!!
 
-model <- lm(rt_overall ~ err_overall*age_group, all_data)
-summary(model)
 
-vas_anova <- demo_clean_lm %>%
-    mutate(age_group = ifelse(ID >= 10600, 1, 0))
-
-wan_anova <- demo_clean_wan %>%
-    mutate(age_group = ifelse(ID >= 10600, 1, 0))
-
-comparison <- lm(vas ~ timepoint * age_group, vas_anova)
+model <- lm(wan_change ~ alpha_change, neural_data_bin)
 summary(model)
 
-model <- lmer(vas ~ timepoint * age_group + (1 | ID), vas_anova)
-summary(model)
-#anova(model,comparison)
+control  <- lm(wan_change ~ err_change, neural_data_bin)
+summary(control)
+anova(model, control)
 
-model <- lmer(wan ~ timepoint * age_group + (1 | ID), wan_anova)
+
+model <- lm(err_change ~ block_change_beta * block_change_alpha * age_group, neural_data)
 summary(model)
+
+model <- lm(err_change ~ block_change_beta * vas_change, neural_data)
+summary(model)
+
+
+
+
+model <- lm(block_change_alpha ~ err_change, filter(neural_data, participant != 10007))
+summary(model)
+
+basic <- t.test(to_dB(value$age_group), neural_data$block_change_alpha)
+tidy(basic)
+
+basic <- t.test(neural_data$age_group, neural_data$block_change_beta)
+tidy(basic)
+```
+
+### Depictions
+
+```{r}
+hist(neural_data$err_change)
+
+hist(neural_data$block_change_alpha)
+
+plot_brain_behaviour <- ggplot(neural_data, aes(block_change_alpha, err_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE)
+
+plot_brain_behaviour
+
+plot_trade_off <- ggplot(all_data, aes(rt_change, err_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE)
+
+plot_trade_off 
 ```
 
 
 # Plotting
 
 ```{r}
-plot_nogo_young <- ggplot(filter(err, participant <= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
-  geom_violin(alpha = 0.4, adjust  = 0.6) +
-  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
-  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
-  stat_summary(fun.y="median") +
-  ggtitle("Young - Commission Error") +
-  xlab("Block") +
-  ylab("Commission Error") +
-  theme_minimal() +
-  scale_color_viridis(discrete = TRUE, option = "D") +
-  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
-  scale_y_continuous(limits = c(0, 100)) +
-  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
-
-plot_nogo_older <- ggplot(filter(err, participant >= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
-  geom_violin(alpha = 0.4, adjust  = 3) +
-  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
-  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
-  stat_summary(fun.y="median") +
-  ggtitle("Older - Commission Error") +
-  xlab("Block") +
-  ylab("Commission Error") +
-  theme_minimal() +
-  scale_color_viridis(discrete = TRUE, option = "D") +
-  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
-  scale_y_continuous(limits = c(0, 100)) +
-  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
-
-plot_nogo_young
-plot_nogo_older
 # path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
 path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation\newer_plots)"
-ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
-ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
-
 ```
+
+
+## RT
 
 ```{r}
 plot_rt_young <- ggplot(filter(rt_natural, age_group=="young"), aes(x = as.factor(block), y = as.numeric(rt), fill = as.factor(block))) +
@@ -399,93 +557,46 @@ ggsave(plot_rt_young, filename = 'rt_young.png', path = path, dpi = 1200, type =
 ggsave(plot_rt_older, filename = 'rt_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ```
 
+## Error
+
 ```{r}
-model <- lm(err_change ~ block_change_alpha, neural_data)
-summary(model)
-#!!
-model <- lm(block_change_alpha ~ block_change_beta * vas_change * age_group, neural_data)
-summary(model)
-#!!!!
+plot_nogo_young <- ggplot(filter(err, participant <= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 0.6) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  stat_summary(fun.y="median") +
+  ggtitle("Young - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
-neural_data_bin <- neural_data %>%
-    mutate(beta_change = ifelse(block_change_beta > median(block_change_beta), 1, 0)) %>%
-    mutate(alpha_change = ifelse(block_change_alpha > median(block_change_alpha), 1, 0))
+plot_nogo_older <- ggplot(filter(err, participant >= 10600), aes(x = as.factor(block), y = as.numeric(err), fill = as.factor(block))) +
+  geom_violin(alpha = 0.4, adjust  = 3) +
+  geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+  geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
-model <- lm(wan_change ~ alpha_change, neural_data_bin)
-summary(model)
+plot_nogo_young
+plot_nogo_older
 
-control  <- lm(wan_change ~ err_change, neural_data_bin)
-summary(control)
-anova(model, control)
+ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
-
-model <- lm(err_change ~ block_change_beta * block_change_alpha * age_group, neural_data)
-summary(model)
-
-model <- lm(err_change ~ block_change_beta * vas_change, neural_data)
-summary(model)
-
-hist(neural_data$err_change)
-
-hist(neural_data$block_change_alpha)
-
-plot_brain_behaviour <- ggplot(neural_data, aes(block_change_alpha, err_change)) +
-    geom_point() +
-    geom_smooth(method = "lm", se = FALSE)
-
-plot_brain_behaviour
-
-plot_trade_off <- ggplot(all_data, aes(rt_change, err_change)) +
-    geom_point() +
-    geom_smooth(method = "lm", se = FALSE)
-
-plot_trade_off
-
-model <- lm(value ~ block, filter(neural_data_long_beta, participant <= 10600))
-summary(model)
-
-neural_data_long_beta <- neural_data_long_beta %>%
-    mutate(age_group = ifelse(age_group == 0, "young", "older"))
-    # filter(participant > 10001)
-
-neural_data_long_alpha <- neural_data_long_alpha %>%
-    mutate(age_group = ifelse(age_group == 0, "young", "older"))
-    # filter(participant > 10001)
-
-model <- t.test(as.numeric(neural_data_long_beta$value), neural_data_long_beta$time, paired = TRUE)
-tidy(model)
-
-model <- lm(time ~ value + (1 | participant), neural_data_long_beta)
-summary(model)
-
-model <- ezANOVA(
-	neural_data_long_beta
-	, dv = value
-	, wid = participant
-	, within = block
-	, between = age_group
-)
-model
-
-model <- ezANOVA(
-	neural_data_long_alpha
-	, dv = value
-	, wid = participant
-	, within = block
-	, between = age_group
-
-)
-model
-
-model <- lm(block_change_alpha ~ err_change, filter(neural_data, participant != 10007))
-summary(model)
-
-basic <- t.test(to_dB(value$age_group), neural_data$block_change_alpha)
-tidy(basic)
-
-basic <- t.test(neural_data$age_group, neural_data$block_change_beta)
-tidy(basic)
 ```
+
+## Alpha
 
 ```{r}
 plot_alpha_young <- ggplot(filter(neural_data_long_alpha, participant <= 10600), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
@@ -521,12 +632,12 @@ plot_alpha_older <- ggplot(filter(neural_data_long_alpha, participant >= 10600),
 
 plot_alpha_young
 plot_alpha_older
-#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 ggsave(plot_alpha_young, filename = 'alpha_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ggsave(plot_alpha_older, filename = 'alpha_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
 ```
+
+## Beta
 
 ```{r}
 plot_beta_young <- ggplot(filter(neural_data_long_beta, participant <= 10600 & participant != 10007), aes(x = as.factor(block), y = as.numeric(value), fill = as.factor(block))) +
@@ -565,8 +676,6 @@ neural_data_long_beta %>%
 
 plot_beta_young
 plot_beta_older
-#path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 ggsave(plot_beta_young, filename = 'newer_plots/beta_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ggsave(plot_beta_older, filename = 'newer_plots/beta_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
