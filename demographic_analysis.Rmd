@@ -9,10 +9,11 @@ output: html_document
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-# path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+# path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
+library(viridis)
 library(readxl)
 library(broom)
 library(lme4)
@@ -105,7 +106,8 @@ demo_clean_lm <- demo_clean %>%
 demo_clean_wan <- demo_clean %>%
     pivot_longer(c(`pre-wan`, `post-wan`), names_to = "timepoint", values_to = "wan") %>%
     mutate(timepoint = recode(timepoint, "pre-wan" = 0, "post-wan" = 1)) %>%
-    select(ID, timepoint, wan)
+    mutate(wan = wan/4, age_group = ifelse(ID < 10600, 0, 1)) %>%
+    select(ID, timepoint, wan, age_group) %>%
 
 main_test_test <- lmer(timepoint ~ vas + (1 | ID), demo_clean_lm)
 summary(main_test_test)
@@ -181,7 +183,7 @@ plot_wan_young <- ggplot(filter(demo_clean_wan, ID <= 10600), aes(x = as.factor(
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
-  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  scale_x_discrete(labels=c("0" = "Pre-task", "1" = "Post-task")) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
 plot_wan_older <- ggplot(filter(demo_clean_wan, ID >= 10600), aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(timepoint))) +
@@ -195,10 +197,24 @@ plot_wan_older <- ggplot(filter(demo_clean_wan, ID >= 10600), aes(x = as.factor(
   theme_minimal() +
   scale_color_viridis(discrete = TRUE, option = "D") +
   scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
-  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  scale_x_discrete(labels=c("0" = "Pre-task", "1" = "Post-task")) +
   theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
+plot_wan <- ggplot(demo_clean_wan, aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(age_group))) +
+  #geom_violin(alpha = 0.4, adjust  = 0.8, width=1, position = "dodge") +
+  #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
+  #geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, width=1, position = "dodge") +
+  ggtitle("Older - Mind-wandering change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(option = "D", begin = 0, end = 1) +
+  scale_x_discrete(labels=c("0" = "Pre-task", "1" = "Post-task")) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
 
+plot_wan
 plot_wan_young
 plot_wan_older
 #path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
