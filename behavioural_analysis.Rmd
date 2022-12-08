@@ -537,7 +537,8 @@ plot_ie <- ggplot(ie, aes(x = as.factor(block), y = as.numeric(ie), fill = as.fa
   scale_color_viridis(discrete = TRUE, option = "D") +
   #scale_y_continuous(limits = c(-0.03, 0.03)) +
   scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
-  labs(fill = "age", colour = 0)
+  labs(fill = "age", colour = 0) +
+  theme_minimal()
 
 plot_ie
 
@@ -545,7 +546,7 @@ model <- lm(ie ~ block*age_group, ie_18)
 summary(model)
 
 
-model <- lmer(ie_z ~ block*age_group * (1|participant), ie)
+model <- lmer(ie ~ block*age_group * (1|participant), ie)
 summary(model)
 
 ```
