@@ -1,0 +1,85 @@
+---
+title: "Inverse_Efficiency"
+author: "Simon Hanzal"
+date: "31 1 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+# path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+knitr::opts_knit$set(root.dir = path)
+library(tidyverse)
+library(readxl)
+library(broom)
+library(lme4)
+library(psych)
+```
+
+# Inverse Efficiency
+
+Is defined as reaction time over accuracy, or 1 - ERROR.
+
+# Datasets
+
+## Flagship
+
+IMPORTANT: Different participants!
+
+```{r load}
+demographic_data <- read_excel("demographic.xlsx")
+excluded = c(
+    10004, 10006, 10502, 15004, 15508, 15509
+)
+```
+
+
+```{r}
+just_motivation <- demographic_data %>%
+    mutate(participant = ID) %>%
+    mutate(motivation = ifelse(motivation == "high", 1,0)) %>%
+    select(participant, motivation)
+
+flagship_ie <- all_data %>%
+    select(rt_overall, err_overall, participant, age_group) %>%
+    inner_join(just_motivation, by = "participant") %>%
+    mutate(ie = rt_overall/((100 - err_overall)/100))
+
+flagship_ie_summary <- flagship_ie %>%
+    group_by(motivation, age_group) %>%
+    summarise(n = n(), mean = mean(ie), sd = sd(ie))
+
+flagship_ie_summary
+
+flagship_rt_summary <- flagship_ie %>%
+    group_by(motivation, age_group) %>%
+    summarise(n = n(), mean = mean(rt_overall), sd = sd(rt_overall))
+
+flagship_rt_summary
+
+flagship_err_summary <- flagship_ie %>%
+    group_by(motivation, age_group) %>%
+    summarise(n = n(), mean = mean(err_overall), sd = sd(err_overall))
+
+flagship_err_summary
+    
+```
+
+Conclusion: IE retains the most commonsensical behaviour - giving signs that the monetary initiative was more effective in young than older. The interaction is key here.
+
+```{r}
+#After hierarchical reduction
+model<- lm(err_overall ~ age_group, flagship_ie)
+summary(model)
+
+model <- lm(ie ~ age_group*motivation, flagship_ie)
+model_test <- lm(ie  ~ age_group, flagship_ie)
+anova(model, model_test)
+summary(model)
+
+model <- lm(rt_overall ~ age_group*motivation, flagship_ie)
+model_test <- lm(rt_overall ~ age_group, flagship_ie)
+summary(model)
+```
+
+
