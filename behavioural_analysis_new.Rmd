@@ -10,8 +10,8 @@ output: html_document
 # Pathsetting and package loading
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+#path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
@@ -30,6 +30,8 @@ trial_data <- read_excel("behavioural.xlsx")
 excluded = c(
    10004, 10006, 10502, 15004, 15508, 15509 
 )
+
+
 ```
 
 # Removals
@@ -420,7 +422,7 @@ model <- ezANOVA(
 model
 ```
 
-### Motivation
+## Motivation vs normal
 
 ```{r}
 model <- lm(log(rt) ~ age_group*motivation, rt_natural_m)
@@ -478,7 +480,173 @@ m_em %>%
   geom_pointrange() +
   geom_line() +
   ylab("IE")
+
+##ERR
+model <- lm(err ~ age_group*motivation, compare_m)
+summary(model)
+
+# IE makes most sense since it neutralises age effects
+m_em <- emmeans(model, c( "age_group", "motivation"))
+
+
+contrast(m_em, 'tukey') %>%
+  broom::tidy() %>%
+  head(6)
+
+m_em
+
+m_em <- as.data.frame(m_em)
+
+m_em %>%
+  ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
+  geom_pointrange() +
+  geom_line() +
+  ylab("IE")
 ```
+
+### Motivation rt
+``` {r}
+rt_m_reduced <- rt_natural_m %>%
+    mutate(rt_9 = log(rt)) %>%
+    select(participant, rt_9, motivation, age_group)
+
+rt_reduced <- rt %>%
+    filter(block == 8) %>%
+    mutate(rt_8 = rt)
+
+rt_all <- rt_reduced %>%
+    inner_join(rt_m_reduced, by="participant") %>%
+    select(participant, rt_8, rt_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+    #filter(motivation == "high", age_group == "young")
+
+rt_all_summary <- rt_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(rt_8), mean_9 = mean(rt_9), rt_change = mean_9 - mean_8)
+
+ggplot(rt_all_summary, aes(x = age_group, y = rt_change, fill = motivation)) +
+    geom_col(position = "dodge")
+```
+
+### Motivation error
+
+```{r}
+
+
+err_m_reduced <- err_m %>%
+    mutate(err_9 = err) %>%
+    select(participant, err_9, motivation, age_group)
+
+err_reduced <- err %>%
+    filter(block == 8) %>%
+    mutate(err_8 = err)
+
+err_all <- err_reduced %>%
+    inner_join(err_m_reduced, by="participant") %>%
+    select(participant, err_8, err_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+
+err_all_summary <- err_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(err_8), mean_9 = mean(err_9), err_change = mean_9 - mean_8)
+
+selection <- err_all %>%
+    filter(motivation == "high", age_group == "young")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "greater")
+model
+
+selection <- err_all %>%
+    filter(motivation == "high")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "two.sided")
+model
+
+selection <- err_all %>%
+    filter(motivation == "low", age_group == "young")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "two.sided")
+model
+
+
+ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
+    geom_col(position = "dodge")
+
+
+# Not needed to check all of this
+#selection <- err_all %>%
+#    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err = err_9 - err_8)
+
+#model <- lm(err ~ motivation*age_group, selection)
+#summary(model)
+
+
+  #  pivot_longer(cols = err_8:err_9, names_to="block", values_to = "errro")
+```
+
+### Motivation ie
+
+```{r}
+
+
+ie_m_reduced <- compare_m %>%
+    mutate(ie_9 = ie) %>%
+    select(participant, ie_9, motivation)
+
+ie_reduced <- ie %>%
+    filter(block == 8) %>%
+    mutate(ie_8 = ie)
+
+ie_all <- ie_reduced %>%
+    inner_join(ie_m_reduced, by="participant") %>%
+    select(participant, ie_8, ie_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+
+ie_all_summary <- ie_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(ie_8), mean_9 = mean(ie_9), ie_change = mean_9 - mean_8)
+
+selection <- ie_all %>%
+    filter(motivation == "high", age_group == "young")
+
+model <- t.test(selection$ie_8, selection$ie_9, paired=TRUE, alternative = "greater")
+model
+
+selection <- ie_all %>%
+    filter(motivation == "low", age_group == "young")
+
+model <- t.test(selection$ie_8, selection$ie_9, paired=TRUE, alternative = "two.sided")
+model
+
+#Not needed to check all of this
+selection <- ie_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), ie = ie_9 - ie_8)
+
+ie_all <- ie_all %>%
+    mutate(ie = ie_9 - ie_8)
+
+ggplot(ie_all_summary, aes(x = age_group, y = ie_change, fill = motivation)) +
+    geom_col(position = "dodge")
+
+model <- lm(ie ~ motivation*age_group, selection)
+summary(model)
+
+
+#Not needed to check all of this
+selection <- err_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err_change = err_9 - err_8)
+
+er_all <- err_all %>%
+    mutate(err_change = err_9 - err_8)
+
+ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
+    geom_col(position = "dodge")
+
+model <- lm(err_change ~ motivation*age_group, selection)
+summary(model)
+
+```
+
 
 
 ### Complex reconstructions
