@@ -422,6 +422,56 @@ model <- ezANOVA(
 model
 ```
 
+#### 5 Motivation
+
+```{r}
+model <- lm(rt_9 ~ motivation*age_group, rt_m_reduced)
+summary(model)
+
+model <- lm(err_9 ~ motivation*age_group, err_m_reduced)
+summary(model)
+
+ie_m_reduced <- ie_m_reduced %>%
+    mutate(age_group = ifelse(participant > 10600, 1, 0))
+
+ie_m_summary <- ie_m_reduced %>%
+    group_by(age_group, motivation) %>%
+    summarise(mean = mean(ie_9))
+
+model <- lm(ie_9 ~ motivation*age_group, ie_m_reduced)
+summary(model)
+```
+
+
+#### 6 Covid
+
+```{r}
+covid_info <- demographic_data %>%
+    mutate(participant = ID) %>%
+    select(participant, recent_covid)
+
+covid_test_rt <- inner_join(covid_info, rt_overall, by="participant")
+
+wilcox.test(rt_overall ~ recent_covid, covid_test_rt)
+
+covid_test_err <- inner_join(covid_info, err_overall, by="participant")
+
+wilcox.test(err_overall ~ recent_covid, covid_test_err)
+
+covid_test_ie <- inner_join(covid_info, ie_reduced, by="participant")
+
+wilcox.test(ie ~ recent_covid, covid_test_ie)
+
+covid_test_vas <- inner_join(covid_info, vas_change, by="participant")
+
+wilcox.test(vas_change ~ recent_covid, covid_test_vas)
+
+covid_test_wan <- inner_join(covid_info, wan_addition, by="participant")
+
+wilcox.test(wan_change ~ recent_covid, covid_test_wan)
+```
+
+
 ## Motivation vs normal
 
 ```{r}
@@ -465,7 +515,7 @@ summary(model)
 
 # IE makes most sense since it neutralises age effects
 m_em <- emmeans(model, c( "age_group", "motivation"))
-
+test(m_em)
 
 contrast(m_em, 'tukey') %>%
   broom::tidy() %>%
@@ -487,11 +537,11 @@ summary(model)
 
 # IE makes most sense since it neutralises age effects
 m_em <- emmeans(model, c( "age_group", "motivation"))
-
+test(m_em)
 
 contrast(m_em, 'tukey') %>%
   broom::tidy() %>%
-  head(6)
+  head(7)
 
 m_em
 
@@ -501,8 +551,10 @@ m_em %>%
   ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
   geom_pointrange() +
   geom_line() +
-  ylab("IE")
+  ylab("Error")
 ```
+
+
 
 ### Motivation rt
 ``` {r}
@@ -527,6 +579,8 @@ rt_all_summary <- rt_all %>%
 ggplot(rt_all_summary, aes(x = age_group, y = rt_change, fill = motivation)) +
     geom_col(position = "dodge")
 ```
+
+
 
 ### Motivation error
 
@@ -573,15 +627,16 @@ ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
     geom_col(position = "dodge")
 
 
-# Not needed to check all of this
-#selection <- err_all %>%
-#    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err = err_9 - err_8)
+#Not needed to check all of this
+selection <- err_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err = err_9 - err_8)
 
-#model <- lm(err ~ motivation*age_group, selection)
-#summary(model)
+model <- lm(err ~ motivation*age_group, selection)
+summary(model)
 
 
-  #  pivot_longer(cols = err_8:err_9, names_to="block", values_to = "errro")
+
+
 ```
 
 ### Motivation ie
@@ -625,7 +680,9 @@ selection <- ie_all %>%
 ie_all <- ie_all %>%
     mutate(ie = ie_9 - ie_8)
 
-ggplot(ie_all_summary, aes(x = age_group, y = ie_change, fill = motivation)) +
+ggplot(ie_all, aes(x = age_group, y = ie_9, fill = motivation)) +
+    geom_col(position = "dodge")
+ggplot(ie_all, aes(x = age_group, y = ie_8, fill = motivation)) +
     geom_col(position = "dodge")
 
 model <- lm(ie ~ motivation*age_group, selection)
@@ -645,7 +702,28 @@ ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
 model <- lm(err_change ~ motivation*age_group, selection)
 summary(model)
 
+
+model <- lm(ie ~ motivation*age_group, selection)
+summary(model)
+
+selection <- ie_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), ie = ie_9 - ie_8)
+
+
+selection_summary <- selection %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean = mean(ie))
+
+selection_plot <- selection %>%
+    pivot_longer(`ie_8`:`ie_9`, names_to="time", values_to="ie_value", names_repair = "minimal") %>%
+    mutate(reduction = ifelse(age_group == 1 & motivation == 0, "older_unmotivated",
+                       ifelse(age_group == 1 & motivation == 1, "older_motivated",
+                       ifelse(age_group == 0 & motivation == 0, "younger_unmotivated","younger_motivated"))))
+
+ggplot(selection_plot, aes(x = time, y = ie_value, fill = reduction)) +
+    geom_col(position = "dodge")
 ```
+
 
 
 
@@ -661,12 +739,27 @@ summary(model)
 model <- lm(rt_overall ~ err_overall*age_group, all_data)
 summary(model)
 
-comparison <- lm(vas ~ timepoint * age_group, vas_anova)
+vas_change <- vas_change %>%
+    mutate(age_group = ifelse(participant > 10600,1,0))
+
+model <- lm(vas_change ~ age_group, vas_change)
 summary(model)
+
+wan_addition <- wan_addition %>%
+    mutate(age_group = ifelse(participant > 10600,1,0))
+
+model <- lm(wan_change ~ age_group, wan_addition)
+summary(model)
+
+comparison <- lm(wan ~ timepoint * age_group, wan_anova)
+summary(comparison)
 
 model <- lmer(vas ~ timepoint * age_group + (1 | ID), vas_anova)
 summary(model)
 #anova(model,comparison)
+
+model <- lmer(wan ~ timepoint * age_group + (1 | ID), wan_anova)
+summary(model)
 
 model <- lmer(wan ~ timepoint * age_group + (1 | ID), wan_anova)
 summary(model)
@@ -695,6 +788,12 @@ rt_ie <- rt_natural %>%
     select(participant, block, rt, sd)
 
 ie <- inner_join(err_ie, rt_ie, by=c("participant", "block")) %>%
+    ungroup() %>%
+    mutate(ie = rt/(100-err)) %>%
+    mutate(ie_z =  (rt-mean(rt))/sd(rt) / (100-err-mean(err)) ) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+
+ie_natural_test <-  inner_join(err_ie, rt_natural, by=c("participant", "block")) %>%
     ungroup() %>%
     mutate(ie = rt/(100-err)) %>%
     mutate(ie_z =  (rt-mean(rt))/sd(rt) / (100-err-mean(err)) ) %>%
@@ -746,7 +845,12 @@ ie_sum <- ie %>%
      group_by(block, age_group) %>%
      summarise(mean = mean(ie), sd = sd(ie))
 
-plot_ie_2 <- ggplot(ie_sum, aes(x = as.factor(block), y = as.numeric(mean), color = age_group, ymin = as.numeric(mean)-as.numeric(sd), ymax = as.numeric(mean)+as.numeric(sd))) +
+ie_natural_sum <- ie_natural_test %>%
+     mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+     group_by(block, age_group) %>%
+     summarise(mean = mean(ie), sd = sd(ie))
+
+plot_ie_2 <- ggplot(ie_natural_sum, aes(x = as.factor(block), y = as.numeric(mean), color = age_group, ymin = as.numeric(mean)-as.numeric(sd), ymax = as.numeric(mean)+as.numeric(sd))) +
   # geom_violin(alpha = 0.4, adjust  = 0.8) +
   # geom_point(aes(colour = as.factor(participant)), shape = 4, alpha = 0.5) +
   # geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
@@ -1034,6 +1138,40 @@ plot_nogo_m_older
 
 ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+```
+
+## IE Motivation
+
+```{r}
+plot_ie_m_young <- ggplot(filter(ie_m_reduced, participant <= 10600), aes(x = as.factor(motivation), y = as.numeric(ie_9), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 0.6) +
+  stat_summary(fun.y="median") +
+  ggtitle("Young - IE") +
+  xlab("Block") +
+  ylab("IE") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 10)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_ie_m_older <- ggplot(filter(ie_m_reduced, participant >= 10600), aes(x = as.factor(motivation), y = as.numeric(ie_9), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 3) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - IE") +
+  xlab("Block") +
+  ylab("IE") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 10)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_ie_m_young
+plot_ie_m_older
+
+ggsave(plot_ie_young, filename = 'ie_m_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_ie_older, filename = 'ie_m_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 ```
 
 ## RT
