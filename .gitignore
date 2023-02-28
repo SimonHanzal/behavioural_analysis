@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 older/
+ie_compilation/
+.behavioural_rejections.csv
