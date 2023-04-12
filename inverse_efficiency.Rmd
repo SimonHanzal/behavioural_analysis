@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 path <- r"(..\ie_compilation)"
-# path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(here)
