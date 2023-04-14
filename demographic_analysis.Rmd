@@ -9,8 +9,8 @@ output: html_document
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-# path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(viridis)
@@ -40,13 +40,26 @@ demo_clean <- demographic_data %>%
 
 # Description
 
+```{r}
+demo_clean %>%
+  count(handedness, gender)
+```
+
+
 ## Age description 80
 
 ``` {r age, echo=FALSE}
 age_information <- demo_clean %>%
-    group_by(age_group) %>%
-    summarise(mean = mean(age), sd = sd(age), median = median(age), min = min(age), max = max(age), number = n())
+#    group_by(age_group) %>%
+    summarise(mean = mean((e_length-2560)/8), sd = sd((e_length-2560)/8), median = median((e_length-2560)/8), min = min((e_length-2560)/8), max = max((e_length-2560)/8), number = n())
 ```
+
+## Mocca
+
+```{r}
+summary(lm(moca ~ age_group, demo_clean))
+```
+
 
 ## vas description 80
 

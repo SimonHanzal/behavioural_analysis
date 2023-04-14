@@ -1,0 +1,40 @@
+---
+title: "ie_macro_analysis"
+author: "Simon Hanzal"
+date: "28 2 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dataset import
+
+```{r cars}
+#MSc online study
+## Can be found in open_annalysis sources
+#1st year online offline comparison
+##
+#PhD EEG experiment
+#Motivational block
+```
+
+# Compilation
+
+```{r pressure, echo=FALSE}
+#Compile all into one dataset
+```
+
+# Plot them
+
+```{r}
+
+```
+
+# Inferetial test
+
+```{r}
+
+```
+
