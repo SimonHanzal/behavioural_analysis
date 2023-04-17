@@ -50,8 +50,8 @@ demo_clean %>%
 
 ``` {r age, echo=FALSE}
 age_information <- demo_clean %>%
-#    group_by(age_group) %>%
-    summarise(mean = mean((e_length-2560)/8), sd = sd((e_length-2560)/8), median = median((e_length-2560)/8), min = min((e_length-2560)/8), max = max((e_length-2560)/8), number = n())
+ #   group_by(age_group) %>%
+    summarise(mean = mean(`percent kept`), sd = sd(`percent kept`), median = median(`percent kept`), min = min(`percent kept`), max = max(`percent kept`), number = n())
 ```
 
 ## Mocca
@@ -113,6 +113,29 @@ post_wan_alpha
 main_test <- t.test(demo_clean$`pre-vas`, demo_clean$`post-vas`, paired = TRUE)
 tidy(main_test)
 
+vas_anova_pre <- vas_anova %>%
+  filter(timepoint == 0)
+
+main_test <- t.test(filter(vas_anova_pre, age_group == 0)%>%pull(vas),
+                    filter(vas_anova_pre, age_group == 1)%>%pull(vas),
+                    paired = FALSE)
+tidy(main_test)
+
+vas_anova <- vas_anova %>%
+    mutate(ID = as.character(ID),
+           timepoint = as.character(timepoint),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	vas_anova,
+	dv = vas,
+	wid = .(ID),
+	within = .(timepoint),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
+
 demo_clean_lm <- demo_clean %>%
     pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
     mutate(timepoint = recode(timepoint, "pre-vas" = 1, "post-vas" = 0)) %>%
@@ -131,6 +154,21 @@ main_test_test
 library(afex)
 mod <- mixed(timepoint ~ vas + (1 | ID), type=3,method="KR",data=demo_clean_lm) 
 mod
+
+wan_anova <- wan_anova %>%
+    mutate(ID = as.character(ID),
+           timepoint = as.character(timepoint),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	wan_anova,
+	dv = wan,
+	wid = .(ID),
+	within = .(timepoint),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
 ```
 
 ## vas export 90
@@ -248,5 +286,31 @@ summary(model)
 ggplot(alpha_vas, aes(alpha, `dif-wan`)) +
     geom_point() +
     geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+vas_change_summary <- vas_change %>%
+  mutate(age_group = ifelse(participant > 10600, 1, 0)) %>%
+  group_by(age_group) %>%
+  summarise(mean = mean(vas_change), sd = sd(vas_change), min = min(vas_change), max = max(vas_change))
+
+wan_addition_summary <- wan_addition %>%
+  mutate(age_group = ifelse(participant > 10600, 1, 0)) %>%
+  group_by(age_group) %>%
+  summarise(mean = mean(wan_change), sd = sd(wan_change), min = min(wan_change), max = max(wan_change))
+
+vas_summary <- vas_anova %>%
+  group_by(age_group, timepoint) %>%
+  summarise(mean = mean(vas), sd = sd(vas), min = min(vas), max = max(vas))
+  
+wan_summary <- wan_anova %>%
+    group_by(age_group, timepoint) %>%
+  summarise(mean = mean(wan), sd = sd(wan), min = min(wan), max = max(wan))
+
+all_subjective_anova <- vas_change %>%
+  inner_join(wan_addition, by = c("participant"))
+
+model <- lm(vas_change ~ wan_change, all_subjective_anova)
+summary(model)
 ```
 

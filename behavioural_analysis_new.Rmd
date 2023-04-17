@@ -10,8 +10,8 @@ output: html_document
 # Pathsetting and package loading
 knitr::opts_chunk$set(echo = TRUE)
 # Modify path as needed depending on where the files are stored in your device
-#path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 knitr::opts_knit$set(root.dir = path)
 library(tidyverse)
 library(readxl)
@@ -31,7 +31,7 @@ excluded = c(
    10004, 10006, 10502, 15004, 15508, 15509 
 )
 
-
+excluded_motivation = c(10502, 15003, 15004, 15006, 15008, 15502, 15508)
 ```
 
 # Removals
@@ -44,9 +44,13 @@ trial_data_m <- trial_data %>%
     filter(participant < 16000) %>%
     filter(!is.na(participant)) %>%
     # exclusions
-    filter(!participant %in% excluded) %>%
+    filter(!participant %in% excluded_motivation) %>%
     filter(block == 9.0) %>%
-    mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    group_by(block, age_group) %>%
+    mutate(mean_rt = mean(Stimulus.RT), sd_rt = sd(Stimulus.RT)) %>%
+    ungroup() %>%
+    filter(Stimulus.RT >= mean_rt-2*sd_rt, Stimulus.RT <= mean_rt+2*sd_rt)
 # Keeping only correct go trials for further RT analysis
 rt_data_m <- trial_data_m %>%
     filter(condition == "Go") %>%
@@ -54,6 +58,8 @@ rt_data_m <- trial_data_m %>%
 # Whilst keeping all for error analysis
 nogo_data_m <- trial_data_m %>%
     filter(condition == "NoGo")
+go_data_m <- trial_data_m %>%
+    filter(condition == "Go")
 ```
 
 
@@ -77,6 +83,8 @@ rt_data <- trial_data %>%
 # Whilst keeping all for error analysis
 nogo_data <- trial_data %>%
     filter(condition == "NoGo")
+go_data <- trial_data %>%
+    filter(condition == "Go")
 ```
 
 ## Trial level
@@ -179,6 +187,10 @@ rt_anova <- rt %>%
     filter(block == 1 | block == 8) %>%
     mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
     mutate(block = recode(block, "1" = 0, "8" = 1))
+
+rt_summary <- rt_natural %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(rt), sd = sd(rt), min = min(rt), max = max(rt))
 ```
 
 ### Motivation Error
@@ -237,7 +249,55 @@ err_anova <- err %>%
     filter(block == 1 | block == 8) %>%
     mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
     mutate(block = recode(block, "1" = 0, "8" = 1))
+
+err_summary <- err %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    group_by(age_group) %>%
+    summarise(mean = mean(err), sd = sd(err), min = min(err), max = max(err))
 ```  
+
+### Go error
+
+``` {r }
+# calculate accuracy score more cleverly
+go_err <- go_data %>%
+  group_by(participant, block) %>%
+  count(Stimulus.ACC) %>%
+  mutate(block_total = sum(n)) %>%
+  filter(Stimulus.ACC == 1) %>%
+  mutate(err = (1 - (n/block_total) ) * 100)
+
+go_err_summary <- go_err %>%
+  mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+  group_by(block, age_group) %>%
+    summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
+
+go_err_change <- go_err %>%
+  filter(block == 1 | block == 8) %>%
+  select(participant, block, err) %>%
+  pivot_wider(names_from = block, values_from = err) %>%
+  mutate(err_change = `8` - `1`) %>%
+  select(participant, err_change)
+
+go_err_overall <- go_err %>%
+  ungroup() %>%
+  group_by(participant) %>%
+  summarise(err_overall = mean(err))
+
+go_rr_anova <- go_err %>%
+      mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    filter(block == 1 | block == 8) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    mutate(block = recode(block, "1" = 0, "8" = 1))
+
+go_err_all_summary <- go_err %>%
+  mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+  group_by(age_group) %>%
+    summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
+```  
+
 
 ## Assembly
 
@@ -341,9 +401,19 @@ model
 #### 3a Age effect
 ```{r}
 
-model <- t.test(all_data$age_group, all_data$err_overall, within = FALSE, anternative = "greater")
+model <- t.test(filter(all_data, age_group == 0) %>% pull(err_overall), filter(all_data, age_group == 1) %>% pull(err_overall), within = FALSE, anternative = "two.sided")
+model
 tidy(model)
 
+model <- lm(age_group ~ err_overall, all_data)
+summary(model)
+
+model <- t.test(filter(all_data, age_group == 0) %>% pull(rt_overall), filter(all_data, age_group == 1) %>% pull(rt_overall), within = FALSE, anternative = "two.sided")
+model
+tidy(model)
+
+model <- lm(age_group ~ rt_overall, all_data)
+summary(model)
 
 # err_anova <- err_anova %>%
 #     filter(participant > 10001)
@@ -351,24 +421,36 @@ tidy(model)
 
 #### 4a Error
 ```{r }
+err_anova <- err_anova %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
 model <- ezANOVA(
 	err_anova,
 	dv = err,
-	wid = participant,
-	within = as.factor(block),
-    between = as.factor(age_group)
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
 )
 model
 ```
 
 #### 4b RTs
 ```{r }
+rt_anova <- rt_anova %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
 model <- ezANOVA(
 	rt_anova,
-	dv = err,
-	wid = participant,
-	within = as.factor(block),
-    between = as.factor(age_group)
+	dv = rt,
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
 )
 model
 ```
@@ -440,6 +522,22 @@ ie_m_summary <- ie_m_reduced %>%
 
 model <- lm(ie_9 ~ motivation*age_group, ie_m_reduced)
 summary(model)
+
+ie_m_reduced <- ie_m_reduced %>%
+    mutate(participant = as.character(participant),
+           motivation = ifelse(motivation == "low",1,0),
+           motivation = as.character(motivation),
+           age_group = as.character(age_group))
+
+model <- ezANOVA(
+	ie_m_reduced,
+	dv = ie_9,
+	wid = .(participant),
+    between = .(age_group, motivation),
+	type = 2,
+	detailed = TRUE
+)
+model
 ```
 
 
@@ -469,6 +567,29 @@ wilcox.test(vas_change ~ recent_covid, covid_test_vas)
 covid_test_wan <- inner_join(covid_info, wan_addition, by="participant")
 
 wilcox.test(wan_change ~ recent_covid, covid_test_wan)
+
+baseline_state_covid <- demographic_data %>%
+    select(ID, recent_covid, `pre-vas`, `pre-wan`)
+
+wilcox.test(`pre-wan` ~ recent_covid, baseline_state_covid)
+
+baseline_state_sleep <- demographic_data %>%
+    select(ID, sleep, `dif-vas`, `dif-wan`, `pre-vas`)
+
+model <- lm(`dif-vas` ~ sleep, baseline_state_sleep)
+summary(model)
+
+model <- lm(`pre-vas` ~ sleep, baseline_state_sleep)
+summary(model)
+
+baseline_state_caffeine <- demographic_data %>%
+    select(ID, caffeine, `dif-vas`, `dif-wan`, `pre-vas`)
+
+model <- lm(`dif-vas` ~ caffeine, baseline_state_caffeine)
+summary(model)
+
+model <- lm(`pre-vas` ~ caffeine, baseline_state_caffeine)
+summary(model)
 ```
 
 
@@ -722,6 +843,46 @@ selection_plot <- selection %>%
 
 ggplot(selection_plot, aes(x = time, y = ie_value, fill = reduction)) +
     geom_col(position = "dodge")
+
+ie_all_long <- ie_all %>%
+    pivot_longer(2:3, names_to="block", values_to="ie_level")
+
+ie_all_long <- ie_all_long %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	ie_all_long,
+	dv = ie_level,
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
+
+##ERR
+model <- lm(ie_level ~ age_group*motivation, ie_all_long)
+summary(model)
+
+# IE makes most sense since it neutralises age effects
+m_em <- emmeans(model, c( "age_group", "motivation"))
+test(m_em)
+
+contrast(m_em, 'tukey') %>%
+  broom::tidy() %>%
+  head(7)
+
+m_em
+
+m_em <- as.data.frame(m_em)
+
+m_em %>%
+  ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
+  geom_pointrange() +
+  geom_line() +
+  ylab("Error")
 ```
 
 
@@ -803,10 +964,38 @@ ie_18 <- ie %>%
     filter(block == 1 | block == 8) %>%
     mutate(block = ifelse(block == 1, 0, 1))
 
+
 ie_summary <- ie %>%
     group_by(block, age_group) %>%
     summarise(mean_ie = mean(ie))
     #filter(block < 8)
+
+ie_test <- ie %>%
+    group_by(participant, age_group) %>%
+    summarise(mean_ie = mean(ie)) %>%
+    mutate(age_group = ifelse(age_group == "young",0,1))
+
+ie_18 <- ie_18 %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	ie_18,
+	dv = ie,
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
+
+model <- t.test(filter(ie_test, age_group == 0) %>% pull(mean_ie), filter(ie_test, age_group == 1) %>% pull(mean_ie), within = FALSE, anternative = "two.sided")
+model
+tidy(model)
+
+model <- lm(age_group ~ mean_ie, ie_test)
+summary(model)
 
 ie_simple <- ie_summary %>%
     pivot_wider(names_from = "age_group", values_from = "mean_ie") %>%
@@ -929,7 +1118,6 @@ summary(model)
 
 model <- lmer(ie ~ block*age_group * (1|participant), ie)
 summary(model)
-
 ```
 
 ### Sleep

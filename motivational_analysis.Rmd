@@ -1,0 +1,564 @@
+---
+title: "Demographic Analysis"
+author: "Simon Hanzal"
+date: "11 11 2022"
+output: html_document
+---
+# Setup
+
+```{r setup, include=FALSE, echo=FALSE}
+# Pathsetting and package loading
+knitr::opts_chunk$set(echo = TRUE)
+# Modify path as needed depending on where the files are stored in your device
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+knitr::opts_knit$set(root.dir = path)
+library(tidyverse)
+library(readxl)
+library(broom)
+library(viridis)
+library(ez)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(ggpubr)
+```
+
+```{r load, echo=FALSE}
+# Loads in all behavioural performance
+trial_level_raw <- read_excel("behavioural.xlsx")
+excluded_in_motivation = c(10502, 15003, 15004, 15006, 15008, 15502, 15508)
+```
+
+# Removals
+
+## Motivation
+
+```{r}
+# Main cleaning
+trial_level_raw_motivation <- trial_level_raw %>%
+    filter(participant < 16000) %>% # removing piloting participants
+    filter(!is.na(participant)) %>%
+    filter(!participant %in% excluded_in_motivation) %>% # removing excluded participants
+    filter(block == 9.0) %>% # Specifying the motivational block (block) 9
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>% # making age groups
+    group_by(block, age_group) %>%
+    mutate(mean_rt = mean(Stimulus.RT), sd_rt = sd(Stimulus.RT)) %>%
+    ungroup() %>%
+    filter(Stimulus.RT >= mean_rt-2*sd_rt, Stimulus.RT <= mean_rt+2*sd_rt) # Trimming away trials outside of normal response rates
+
+# Keeping only correct go trials for further RT analysis
+rt_motivation <- trial_level_raw_motivation %>%
+    filter(condition == "Go") %>%
+    filter(Stimulus.ACC == 1)
+# Whilst keeping all for error analysis
+nogo_motivation <- trial_level_raw_motivation %>%
+    filter(condition == "NoGo")
+go_motivation <- trial_level_raw_motivation %>%
+    filter(condition == "Go")
+```
+
+# Description
+
+## Assumption checks
+
+```{r}
+
+# log_transform necessary
+hist(rt_motivation$Stimulus.RT)
+hist(log(rt_motivation$Stimulus.RT))
+```
+
+
+## Summaries
+
+### Motivation RT
+```{r}
+# Importing motivational condition information
+condition_motivation <- demographic_data %>%
+    select(ID, motivation)
+
+rt_motivation <- rt_motivation %>%
+  group_by(block, participant, age_group) %>%
+  summarise(rt = mean(Stimulus.RT), sd = sd(Stimulus.RT),
+            min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n(), ID = participant) %>%
+  inner_join(condition_motivation, by="ID") %>%
+  select(-ID)
+```
+
+### Motivation Error
+```{r}
+condition_motivation <- demographic_data %>%
+    select(ID, motivation)
+
+commission_error_motivation <- nogo_motivation %>%
+  filter(block == 9) %>%
+  group_by(participant, age_group) %>%
+  count(Stimulus.ACC) %>%
+  mutate(block_total = sum(n)) %>%
+  filter(Stimulus.ACC == 1) %>%
+  mutate(err = (1 - (n/block_total) ) * 100) %>%
+  mutate(ID = participant) %>%
+  inner_join(condition_motivation, by = "ID")
+
+commission_error_motivation_summary <- commission_error_motivation %>%
+  group_by(motivation, age_group) %>%
+  summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
+```
+
+### Go error
+
+``` {r }
+# calculate accuracy score more cleverly
+omission_error_motivation <- go_motivation %>%
+  group_by(participant, block) %>%
+  count(Stimulus.ACC) %>%
+  mutate(block_total = sum(n)) %>%
+  filter(Stimulus.ACC == 1) %>%
+  mutate(err = (1 - (n/block_total) ) * 100)
+
+omission_error_motivation_summary <- omission_error_motivation %>%
+  mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+  group_by(block, age_group) %>%
+    summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
+```  
+
+## Motivation vs normal
+
+```{r}
+model <- lm(log(rt) ~ age_group*motivation, rt_motivation)
+summary(model)
+
+model <- lm(err ~ age_group*motivation, commission_error_motivation)
+summary(model)
+
+emmeans(model, pairwise ~ age_group)
+
+## Inverse Efficiency
+compare_motivation <- rt_motivation %>%
+    dplyr::select(rt, participant) %>%
+    inner_join(commission_error_motivation, by = "participant") %>%
+    mutate(ie = log(rt)/((100-err)/100)) %>%
+    mutate(ie_z =  (rt-mean(rt))/sd(rt) / (100-err-mean(err)))
+
+compare_motivation_ie_summary <- compare_motivation %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean = mean(ie), sd = sd(ie),
+            min = min(ie), max = max(ie), trials = n())
+
+compare_motivation_err_summary <- compare_motivation %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean = mean(err), sd = sd(err),
+            min = min(err), max = max(err), trials = n())
+
+compare_motivation_rt_summary <- compare_motivation %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean = mean(rt), sd = sd(rt),
+            min = min(rt), max = max(rt), trials = n())
+
+model <- lm(ie ~ age_group*motivation, compare_motivation)
+summary(model)
+
+# IE makes most sense since it neutralises age effects
+m_em <- emmeans(model, c( "age_group", "motivation"))
+test(m_em)
+
+contrast(m_em, 'tukey') %>%
+  broom::tidy() %>%
+  head(6)
+
+m_em
+
+m_em <- as.data.frame(m_em)
+
+m_em %>%
+  ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
+  geom_pointrange() +
+  geom_line() +
+  ylab("IE")
+
+# ERROR COMPARISON
+
+##ERR
+model <- lm(err ~ age_group*motivation, compare_motivation)
+summary(model)
+
+# IE makes most sense since it neutralises age effects
+m_em <- emmeans(model, c( "age_group", "motivation"))
+test(m_em)
+
+contrast(m_em, 'tukey') %>%
+  broom::tidy() %>%
+  head(7)
+
+m_em
+
+m_em <- as.data.frame(m_em)
+
+m_em %>%
+  ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
+  geom_pointrange() +
+  geom_line() +
+  ylab("Error")
+```
+
+
+
+### Motivation rt
+``` {r}
+rt_m_reduced <- rt_motivation %>%
+    mutate(rt_9 = log(rt)) %>%
+    select(participant, rt_9, motivation, age_group)
+
+rt_reduced <- rt %>%
+    filter(block == 8) %>%
+    mutate(rt_8 = rt)
+
+rt_all <- rt_reduced %>%
+    inner_join(rt_m_reduced, by="participant") %>%
+    select(participant, rt_8, rt_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+    #filter(motivation == "high", age_group == "young")
+
+rt_all_summary <- rt_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(rt_8), mean_9 = mean(rt_9), rt_change = mean_9 - mean_8)
+
+ggplot(rt_all_summary, aes(x = age_group, y = rt_change, fill = motivation)) +
+    geom_col(position = "dodge")
+```
+
+
+
+### Motivation error
+
+```{r}
+
+
+commission_error_motivation_reduced <- commission_error_motivation %>%
+    mutate(err_9 = err) %>%
+    select(participant, err_9, motivation, age_group)
+
+err_reduced <- err %>%
+    filter(block == 8) %>%
+    mutate(err_8 = err)
+
+err_all <- err_reduced %>%
+    inner_join(commission_error_motivation_reduced, by="participant") %>%
+    select(participant, err_8, err_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+
+err_all_summary <- err_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(err_8), mean_9 = mean(err_9), err_change = mean_9 - mean_8)
+
+selection <- err_all %>%
+    filter(motivation == "high", age_group == "young")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "greater")
+model
+
+selection <- err_all %>%
+    filter(motivation == "high")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "two.sided")
+model
+
+selection <- err_all %>%
+    filter(motivation == "low", age_group == "young")
+
+model <- t.test(selection$err_8, selection$err_9, paired=TRUE, alternative = "two.sided")
+model
+
+
+ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
+    geom_col(position = "dodge")
+
+
+#Not needed to check all of this
+selection <- err_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err = err_9 - err_8)
+
+model <- lm(err ~ motivation*age_group, selection)
+summary(model)
+
+
+
+
+```
+
+### Motivation ie
+
+```{r}
+
+
+ie_m_reduced <- compare_motivation %>%
+    mutate(ie_9 = ie) %>%
+    select(participant, ie_9, motivation)
+
+ie_reduced <- ie %>%
+    filter(block == 8) %>%
+    mutate(ie_8 = ie)
+
+ie_all <- ie_reduced %>%
+    inner_join(ie_m_reduced, by="participant") %>%
+    select(participant, ie_8, ie_9, motivation, age_group) %>%
+    filter(! participant %in% c("15003", "15006", "15008", "15502", "15503"))
+
+ie_all_summary <- ie_all %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean_8 = mean(ie_8), mean_9 = mean(ie_9), ie_change = mean_9 - mean_8)
+
+selection <- ie_all %>%
+    filter(motivation == "high", age_group == "young")
+
+model <- t.test(selection$ie_8, selection$ie_9, paired=TRUE, alternative = "greater")
+model
+
+selection <- ie_all %>%
+    filter(motivation == "low", age_group == "young")
+
+model <- t.test(selection$ie_8, selection$ie_9, paired=TRUE, alternative = "two.sided")
+model
+
+#Not needed to check all of this
+selection <- ie_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), ie = ie_9 - ie_8)
+
+ie_all <- ie_all %>%
+    mutate(ie = ie_9 - ie_8)
+
+ggplot(ie_all, aes(x = age_group, y = ie_9, fill = motivation)) +
+    geom_col(position = "dodge")
+ggplot(ie_all, aes(x = age_group, y = ie_8, fill = motivation)) +
+    geom_col(position = "dodge")
+
+model <- lm(ie ~ motivation*age_group, selection)
+summary(model)
+
+
+#Not needed to check all of this
+selection <- err_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), err_change = err_9 - err_8)
+
+er_all <- err_all %>%
+    mutate(err_change = err_9 - err_8)
+
+ggplot(err_all_summary, aes(x = age_group, y = err_change, fill = motivation)) +
+    geom_col(position = "dodge")
+
+model <- lm(err_change ~ motivation*age_group, selection)
+summary(model)
+
+
+model <- lm(ie ~ motivation*age_group, selection)
+summary(model)
+
+selection <- ie_all %>%
+    mutate(motivation = ifelse(motivation == "high", 1, 0), age_group = ifelse(age_group == "young",0,1), ie = ie_9 - ie_8)
+
+
+selection_summary <- selection %>%
+    group_by(motivation, age_group) %>%
+    summarise(mean = mean(ie))
+
+selection_plot <- selection %>%
+    pivot_longer(`ie_8`:`ie_9`, names_to="time", values_to="ie_value", names_repair = "minimal") %>%
+    mutate(reduction = ifelse(age_group == 1 & motivation == 0, "older_unmotivated",
+                       ifelse(age_group == 1 & motivation == 1, "older_motivated",
+                       ifelse(age_group == 0 & motivation == 0, "younger_unmotivated","younger_motivated"))))
+
+ggplot(selection_plot, aes(x = time, y = ie_value, fill = reduction)) +
+    geom_col(position = "dodge")
+
+ie_all_long <- ie_all %>%
+    pivot_longer(2:3, names_to="block", values_to="ie_level")
+
+ie_all_long <- ie_all_long %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	ie_all_long,
+	dv = ie_level,
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
+```
+
+# Within block differences ie
+
+```{r}
+##ERR
+model <- lm(ie_level ~ age_group*motivation, ie_all_long)
+summary(model)
+
+m_em <- emmeans(model, c( "age_group", "motivation"))
+test(m_em)
+
+contrast(m_em, 'tukey') %>%
+  broom::tidy() %>%
+  head(7)
+
+m_em # This is for interpreting the output
+
+m_em <- as.data.frame(m_em)
+
+m_em %>%
+  ggplot(aes(motivation, emmean, ymin=lower.CL, ymax=upper.CL, color=age_group, group=age_group)) +
+  geom_pointrange() +
+  geom_line() +
+  ylab("Inverse Efficiency")
+```
+
+
+#### 5 Motivation
+
+```{r}
+ie_m_summary <- ie_m_reduced %>%
+    mutate(age_group = ifelse(participant > 10600, 1, 0))
+    group_by(age_group, motivation) %>%
+    summarise(mean = mean(ie_9))
+
+model <- lm(ie_9 ~ motivation*age_group, ie_m_reduced)
+summary(model)
+
+ie_m_reduced <- ie_m_reduced %>%
+    mutate(participant = as.character(participant),
+           motivation = ifelse(motivation == "low",1,0),
+           motivation = as.character(motivation),
+           age_group = as.character(age_group))
+
+model <- ezANOVA(
+	ie_m_reduced,
+	dv = ie_9,
+	wid = .(participant),
+    between = .(age_group, motivation),
+	type = 2,
+	detailed = TRUE
+)
+model
+```
+
+
+## Hierarchical exploration
+
+
+
+# Plotting
+
+```{r}
+# path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation\newer_plots)"
+```
+
+## RT Motivation
+
+```{r}
+plot_rt_m_young <- ggplot(filter(rt_motivation, age_group=="young"), aes(x = motivation, y = as.numeric(rt), fill = motivation)) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Young - Motivation change") +
+  xlab("Motivation") +
+  ylab("Reaction Time (ms)") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  # scale_y_continuous(limits = c(250, 1000)) +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_rt_m_older <- ggplot(filter(rt_motivation, age_group=="older"), aes(x = motivation, y = as.numeric(rt), fill = motivation)) +
+  geom_violin(alpha = 0.4, adjust  = 0.8) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  ggtitle("Older - Motivation change") +
+  xlab("Motivation") +
+  ylab("Reaction Time (ms)") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  # scale_y_continuous(limits = c(250, 1000)) +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+rt_motivation %>%
+    group_by(age_group, motivation) %>%
+    summarise(mean = mean(rt), sd = sd(rt))
+
+plot_rt_m_young
+plot_rt_m_older
+ggsave(plot_rt_m_young, filename = 'rt_young_m.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_rt_m_older, filename = 'rt_older_m.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+```
+
+## Err Motivation
+
+```{r}
+plot_nogo_m_young <- ggplot(filter(commission_error_motivation, participant <= 10600), aes(x = as.factor(motivation), y = as.numeric(err), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 0.6) +
+  stat_summary(fun.y="median") +
+  ggtitle("Young - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_nogo_m_older <- ggplot(filter(commission_error_motivation, participant >= 10600), aes(x = as.factor(motivation), y = as.numeric(err), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 3) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - Commission Error") +
+  xlab("Block") +
+  ylab("Commission Error") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_nogo_m_young
+plot_nogo_m_older
+
+ggsave(plot_nogo_young, filename = 'nogo_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_nogo_older, filename = 'nogo_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+```
+
+## IE Motivation
+
+```{r}
+plot_ie_m_young <- ggplot(filter(ie_m_reduced, participant <= 10600), aes(x = as.factor(motivation), y = as.numeric(ie_9), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 0.6) +
+  stat_summary(fun.y="median") +
+  ggtitle("Young - IE") +
+  xlab("Block") +
+  ylab("IE") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 10)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_ie_m_older <- ggplot(filter(ie_m_reduced, participant >= 10600), aes(x = as.factor(motivation), y = as.numeric(ie_9), fill = as.factor(motivation))) +
+  geom_violin(alpha = 0.4, adjust  = 3) +
+  stat_summary(fun.y="median") +
+  ggtitle("Older - IE") +
+  xlab("Block") +
+  ylab("IE") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  scale_y_continuous(limits = c(0, 10)) +
+  theme(legend.position = 0, text=element_text(size=18,  family="Times New Roman"), axis.text=element_text(size=16))
+
+plot_ie_m_young
+plot_ie_m_older
+
+ggsave(plot_ie_young, filename = 'ie_m_young.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+ggsave(plot_ie_older, filename = 'ie_m_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
+```

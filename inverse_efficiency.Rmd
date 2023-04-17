@@ -17,6 +17,188 @@ library(lme4)
 library(psych)
 ```
 
+# Old
+
+### Inverse Efficiency
+```{r}
+err_ie <- err %>%
+    select(participant, block, err)
+
+rt_ie <- rt_natural %>%
+    select(participant, block, rt, sd)
+
+ie <- inner_join(err_ie, rt_ie, by=c("participant", "block")) %>%
+    ungroup() %>%
+    mutate(ie = rt/(100-err)) %>%
+    mutate(ie_z =  (rt-mean(rt))/sd(rt) / (100-err-mean(err)) ) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+
+ie_natural_test <-  inner_join(err_ie, rt_natural, by=c("participant", "block")) %>%
+    ungroup() %>%
+    mutate(ie = rt/(100-err)) %>%
+    mutate(ie_z =  (rt-mean(rt))/sd(rt) / (100-err-mean(err)) ) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+
+ie_18 <- ie %>%
+    filter(block == 1 | block == 8) %>%
+    mutate(block = ifelse(block == 1, 0, 1))
+
+
+ie_summary <- ie %>%
+    group_by(block, age_group) %>%
+    summarise(mean_ie = mean(ie))
+    #filter(block < 8)
+
+ie_test <- ie %>%
+    group_by(participant, age_group) %>%
+    summarise(mean_ie = mean(ie)) %>%
+    mutate(age_group = ifelse(age_group == "young",0,1))
+
+ie_18 <- ie_18 %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group))
+model <- ezANOVA(
+	ie_18,
+	dv = ie,
+	wid = .(participant),
+	within = .(block),
+    between = .(age_group),
+	type = 2,
+	detailed = TRUE
+)
+model
+
+model <- t.test(filter(ie_test, age_group == 0) %>% pull(mean_ie), filter(ie_test, age_group == 1) %>% pull(mean_ie), within = FALSE, anternative = "two.sided")
+model
+tidy(model)
+
+model <- lm(age_group ~ mean_ie, ie_test)
+summary(model)
+
+ie_simple <- ie_summary %>%
+    pivot_wider(names_from = "age_group", values_from = "mean_ie") %>%
+    mutate(difference = older-young) %>%
+    select(block, difference)
+
+plot(ie_simple)
+
+model <- lm(block ~ difference, ie_simple)
+summary(model)
+plot(model)
+
+model <- lm(mean_ie ~ block*age_group, ie_summary)
+summary(model)
+plot(model)
+
+
+plot_ie <- ggplot(ie, aes(x = as.factor(block), y = as.numeric(ie), fill = as.factor(age_group))) +
+  # geom_violin(alpha = 0.4, adjust  = 0.8) +
+  # geom_point(aes(colour = as.factor(participant)), shape = 4, alpha = 0.5) +
+  # geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_boxplot(alpha = 0.2, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0) +
+  #ggtitle("Inverse Efficiency") +
+  xlab("Block") +
+  ylab("Inverse Efficiency") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  #scale_y_continuous(limits = c(-0.03, 0.03)) +
+  scale_fill_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  labs(fill = "age", colour = 0) +
+  theme_minimal()
+
+plot_ie
+
+ie_sum <- ie %>%
+     mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+     group_by(block, age_group) %>%
+     summarise(mean = mean(ie), sd = sd(ie))
+
+ie_natural_sum <- ie_natural_test %>%
+     mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+     group_by(block, age_group) %>%
+     summarise(mean = mean(ie), sd = sd(ie))
+
+plot_ie_2 <- ggplot(ie_natural_sum, aes(x = as.factor(block), y = as.numeric(mean), color = age_group, ymin = as.numeric(mean)-as.numeric(sd), ymax = as.numeric(mean)+as.numeric(sd))) +
+  # geom_violin(alpha = 0.4, adjust  = 0.8) +
+  # geom_point(aes(colour = as.factor(participant)), shape = 4, alpha = 0.5) +
+  # geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_point(position = position_dodge(width = 0.90), size=4.5, alpha = 1) +
+  geom_errorbar(position = position_dodge(width = 0.90), size=1, alpha = 0.7) +
+  #ggtitle("Inverse Efficiency") +
+  xlab("Block") +
+  ylab("Inverse Efficiency") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  #scale_y_continuous(limits = c(-0.03, 0.03)) +
+  scale_color_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  ylim(0,8) +
+  labs(color = "Age") +
+  theme_minimal()
+
+plot_ie_2
+
+
+err_sum <- err %>%
+     mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+     group_by(block, age_group) %>%
+     summarise(mean = mean(err), sd = sd(err))
+
+plot_err_2 <- ggplot(err_sum, aes(x = as.factor(block), y = as.numeric(mean), color = age_group, ymin = as.numeric(mean)-as.numeric(sd), ymax = as.numeric(mean)+as.numeric(sd))) +
+  # geom_violin(alpha = 0.4, adjust  = 0.8) +
+  # geom_point(aes(colour = as.factor(participant)), shape = 4, alpha = 0.5) +
+  # geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_point(position = position_dodge(width = 0.90), size=4.5, alpha = 1) +
+  geom_errorbar(position = position_dodge(width = 0.90), size=1, alpha = 0.7) +
+  #ggtitle("Inverse Efficiency") +
+  xlab("Block") +
+  ylab("Commission Error (%)") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  #scale_y_continuous(limits = c(-0.03, 0.03)) +
+  scale_color_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  ylim(-5,100) +
+  labs(color = "Age") +
+  theme_minimal()
+
+plot_err_2
+
+rt_sum <- rt_natural %>%
+     mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+     group_by(block, age_group) %>%
+     summarise(mean = mean(rt), sd = sd(rt))
+
+plot_rt_2 <- ggplot(rt_sum, aes(x = as.factor(block), y = as.numeric(mean), color = age_group, ymin = as.numeric(mean)-as.numeric(sd), ymax = as.numeric(mean)+as.numeric(sd))) +
+  # geom_violin(alpha = 0.4, adjust  = 0.8) +
+  # geom_point(aes(colour = as.factor(participant)), shape = 4, alpha = 0.5) +
+  # geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5) +
+  geom_point(position = position_dodge(width = 0.90), size=4.5, alpha = 1) +
+  geom_errorbar(position = position_dodge(width = 0.90), size=1, alpha = 0.7) +
+  #ggtitle("Inverse Efficiency") +
+  xlab("Block") +
+  ylab("Reaction Time (ms)") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  #scale_y_continuous(limits = c(-0.03, 0.03)) +
+  scale_color_viridis_d(limits=rev, option = "D", begin = 0.4, end = 0.8) +
+  ylim(0,750) +
+  labs(color = "Age") +
+  theme_minimal()
+
+
+plot <- ggarrange(plot_err_2, plot_rt_2, plot_ie_2,
+                    ncol = 1, nrow = 3)
+plot
+ggsave(plot, filename = 'triple_plot.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 10, units = 'in', bg = 'white')
+
+ggsave(plot_ie_2, filename = 'single_plot.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 10, units = 'in', bg = 'white')
+
+
+
+model <- lm(ie ~ block*age_group, ie_18)
+summary(model)
+
+
+model <- lmer(ie ~ block*age_group * (1|participant), ie)
+summary(model)
+```
+
 # Input
 
 ```{r}
