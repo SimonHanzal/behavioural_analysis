@@ -98,7 +98,7 @@ tidy(main_test)
 
 vas_anova <- demo_clean %>%
     pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
-    mutate(timepoint = recode(timepoint, "pre-vas" = 1, "post-vas" = 0), age_group = ifelse(ID < 10600, 0, 1)) %>%
+    mutate(timepoint = recode(timepoint, "pre-vas" = 0, "post-vas" = 1), age_group = ifelse(ID < 10600, 0, 1)) %>%
     select(ID, timepoint, vas, age_group) %>%
     mutate(ID = as.character(ID),
        timepoint = as.character(timepoint),
