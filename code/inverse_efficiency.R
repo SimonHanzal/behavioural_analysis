@@ -74,15 +74,14 @@ ie_simple <- ie_summary %>%
     mutate(difference = older-young) %>%
     select(block, difference)
 
-plot(ie_simple)
 
 model <- lm(block ~ difference, ie_simple)
 summary(model)
-plot(model)
+#plot(model)
 
 model <- lm(mean_ie ~ block*age_group, ie_summary)
 summary(model)
-plot(model)
+#plot(model)
 
 
 plot_ie <- ggplot(ie, aes(x = as.factor(block), y = as.numeric(ie), fill = as.factor(age_group))) +
@@ -194,16 +193,16 @@ summary(model)
 # Macroscopic----
 
 #Online SART
-online_sart <- read_csv(here("ie_compilation","quantile_behaviour.csv"))
+online_sart <- read_csv(here("data","ie_compilation","quantile_behaviour.csv"))
 #Comparison
-offline_comparison <- read_excel(here("ie_compilation","offline_scores.xlsx"))
-online_comparison <- read_excel(here("ie_compilation","online_scores.xlsx"))
+offline_comparison <- read_excel(here("data","ie_compilation","offline_scores.xlsx"))
+online_comparison <- read_excel(here("data","ie_compilation","online_scores.xlsx"))
 #EEG
-eeg_error <- read_csv(here("ie_compilation","err.csv"))
-eeg_rt <- read_csv(here("ie_compilation","rt_natural.csv"))
+eeg_error <- read_csv(here("data","ie_compilation","err.csv"))
+eeg_rt <- read_csv(here("data","ie_compilation","rt_natural.csv"))
 #Motivation
-motivation_error <- read_csv(here("ie_compilation","err_m.csv"))
-motivation_rt <- read_csv(here("ie_compilation","rt_natural_m.csv"))
+motivation_error <- read_csv(here("data","ie_compilation","err_m.csv"))
+motivation_rt <- read_csv(here("data","ie_compilation","rt_natural_m.csv"))
 
 # Clean----
 
@@ -375,15 +374,15 @@ ie_simple <- ie_summary %>%
     mutate(difference = older-young) %>%
     select(block, difference)
 
-plot(ie_simple)
+#plot(ie_simple)
 
 model <- lm(block ~ difference, ie_simple)
 summary(model)
-plot(model)
+#plot(model)
 
 model <- lm(mean_ie ~ block*age_group, ie_summary)
 summary(model)
-plot(model)
+#plot(model)
 
 
 plot_ie <- ggplot(ie, aes(x = as.factor(block), y = as.numeric(ie), fill = as.factor(age_group))) +

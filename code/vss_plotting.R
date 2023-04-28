@@ -7,7 +7,7 @@ CairoWin()
 
 
 
-p <- ggplot(filter(vas_anova), aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(age_group))) +
+p <- ggplot(vas_anova, aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(age_group))) +
     geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
@@ -36,7 +36,7 @@ png(filename="figures/vas.png", width = 1600, height = 800, units = "px", points
 print(p)
 dev.off()
 
-p <- ggplot(filter(wan_anova), aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(age_group))) +
+p <- ggplot(wan_anova, aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(age_group))) +
     geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
@@ -64,3 +64,33 @@ p
 png(filename="figures/wan.png", width = 1600, height = 800, units = "px", pointsize = 12, bg = "transparent", type="cairo")
 print(p)
 dev.off()
+
+# Behaviour----
+
+## Position----
+
+rt_natural_plot <- rt_natural %>%
+    mutate(block = as.character(block)) %>%
+    group_by(block, age_group) %>%
+    summarise(low = mean(rt), high = mean(rt))
+
+rt_natural_m_plot <- rt_natural_m %>%
+    mutate(block = "motivation") %>%
+    group_by(block, age_group, motivation) %>%
+    summarise(rt = mean(rt)) %>%
+    pivot_wider(names_from = motivation, values_from = rt)
+
+rt_plot <- rt_natural_plot %>%
+    full_join(rt_natural_m_plot)
+
+
+p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
+    geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
+    geom_line(aes(y = as.numeric(low)), size = 2) +
+    geom_line(aes(y = as.numeric(high)), linetype = "dashed", size = 2)
+p
+
+plot_rt_young <- ggplot(filter(rt_natural, age_group=="young"), aes(x = as.factor(block), y = as.numeric(rt), fill = as.factor(block))) +
+    geom_violin(alpha = 0.4, adjust  = 0.8) +
+    geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
+    geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5)
