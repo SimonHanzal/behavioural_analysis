@@ -5,6 +5,8 @@ date: "31 1 2023"
 output: html_document
 ---
 
+# Setup
+
 ```{r setup, include=FALSE}
 path <- r"(..\ie_compilation)"
  path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
@@ -17,9 +19,8 @@ library(lme4)
 library(psych)
 ```
 
-# Old
+# Abstract considerations
 
-### Inverse Efficiency
 ```{r}
 err_ie <- err %>%
     select(participant, block, err)
@@ -199,7 +200,7 @@ model <- lmer(ie ~ block*age_group * (1|participant), ie)
 summary(model)
 ```
 
-# Input
+# Macroscopic analysis
 
 ```{r}
 #Online SART
@@ -215,7 +216,7 @@ motivation_error <- read_csv(here("ie_compilation","err_m.csv"))
 motivation_rt <- read_csv(here("ie_compilation","rt_natural_m.csv"))
 ```
 
-# Clean
+## Clean
 
 ```{r}
 online_sart_ie <- online_sart %>%
@@ -253,7 +254,7 @@ motivation_ie <- motivation_error %>%
 ie <- list(comparison_ie, eeg_ie, motivation_ie) %>% reduce(full_join)
 ```
 
-# Describe
+## Describe
 
 ```{r}
 ie_summary <- ie %>%
@@ -288,7 +289,7 @@ ie_summary_all <- ie %>%
     summarise(mean_ie = mean(ie), sd_ie = sd(ie))
 ```
 
-# Time on task
+## Time on task
 
 ```{r}
 online_sart_ie_time <- online_sart %>%
@@ -322,11 +323,7 @@ motivation_ie_time <- motivation_error %>%
     select(id, condition, time, ie, age)
 
 ie_time <- list(online_sart_ie_time, comparison_ie_time, eeg_ie_time, motivation_ie_time) %>% reduce(full_join)
-```
 
-# Describe
-
-```{r}
 ie_time_summary <- ie_time %>%
     na.omit() %>%
     group_by(time) %>%
@@ -334,9 +331,9 @@ ie_time_summary <- ie_time %>%
 ```
 
 
-## Hierarchical exploration
+# Hierarchical (Between-group) exploration
 
-### Inverse Efficiency
+## Inverse Efficiency
 ```{r}
 err_ie <- err %>%
     select(participant, block, err)
@@ -516,6 +513,7 @@ model <- lmer(ie ~ block*age_group * (1|participant), ie)
 summary(model)
 ```
 
+## Interaction decomposition
 
 ``` {r}
 
@@ -615,7 +613,7 @@ model <- ezANOVA(
 model
 ```
 
-### Motivation ie
+## Motivation
 
 ```{r}
 
@@ -741,7 +739,7 @@ m_em %>%
 ```
 
 
-#### 5 Motivation
+## Main test
 
 ```{r}
 ie_m_summary <- ie_m_reduced %>%
@@ -759,7 +757,7 @@ ie_m_reduced <- ie_m_reduced %>%
            age_group = as.character(age_group))
 ```
 
-## IE Motivation
+## Motivation
 
 ```{r}
 plot_ie_m_young <- ggplot(filter(ie_m_reduced, participant <= 10600), aes(x = as.factor(motivation), y = as.numeric(ie_9), fill = as.factor(motivation))) +
@@ -865,7 +863,7 @@ m_em %>%
   ylab("Error")
 ```
 
-### Motivation ie
+## Interactions
 
 ```{r}
 ie_m_reduced <- compare_m %>%
