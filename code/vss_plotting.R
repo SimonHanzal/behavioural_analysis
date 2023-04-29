@@ -1,11 +1,12 @@
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
-setwd(path)
+library(here)
 library(tidyverse)
 library(ggpubr)
 library(Cairo)
 CairoWin()
 
+# Subjective----
 
+## VAS----
 
 p <- ggplot(vas_anova, aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(age_group))) +
     geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
@@ -35,6 +36,8 @@ p
 png(filename="figures/vas.png", width = 1600, height = 800, units = "px", pointsize = 12, bg = "transparent", type="cairo")
 print(p)
 dev.off()
+
+## WAN----
 
 p <- ggplot(wan_anova, aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(age_group))) +
     geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
@@ -67,7 +70,7 @@ dev.off()
 
 # Behaviour----
 
-## Position----
+## RT----
 
 rt_natural_plot <- rt_natural %>%
     mutate(block = as.character(block)) %>%
@@ -75,7 +78,7 @@ rt_natural_plot <- rt_natural %>%
     summarise(low = mean(rt), high = mean(rt))
 
 rt_natural_m_plot <- rt_natural_m %>%
-    mutate(block = "motivation") %>%
+    mutate(block = "M") %>%
     group_by(block, age_group, motivation) %>%
     summarise(rt = mean(rt)) %>%
     pivot_wider(names_from = motivation, values_from = rt)
@@ -86,11 +89,92 @@ rt_plot <- rt_natural_plot %>%
 
 p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
     geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
-    geom_line(aes(y = as.numeric(low)), size = 2) +
-    geom_line(aes(y = as.numeric(high)), linetype = "dashed", size = 2)
+    geom_line(aes(y = as.numeric(low)), size = 2.3) +
+    geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
+    theme_minimal() +
+    theme(legend.position = "none",
+      axis.text.x = element_text(colour = "black", size = 28),
+      axis.text.y = element_text(colour = "black", size = 28),
+      axis.title.x = element_text(colour = "black", size = 38),
+      axis.title.y = element_text(colour = "black", size = 38)) +
+    #geom_vline(xintercept=8.5, color = "black", size=1) +
+    labs(x = "Block", y = "RT (ms)", fill)
 p
+png(filename="figures/rt.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+print(p)
+dev.off()
 
-plot_rt_young <- ggplot(filter(rt_natural, age_group=="young"), aes(x = as.factor(block), y = as.numeric(rt), fill = as.factor(block))) +
-    geom_violin(alpha = 0.4, adjust  = 0.8) +
-    geom_point(aes(colour = as.factor(participant)),shape = 4, alpha = 0.5) +
-    geom_line(aes(colour = as.factor(participant)), group= 1, alpha = 0.5)
+## ERR----
+
+err_plot <- err %>%
+    mutate(block = as.character(block), age_group = ifelse(participant > 10600, "older", "young")) %>%
+    group_by(block, age_group) %>%
+    summarise(low = mean(err), high = mean(err))
+
+err_m_plot <- err_m %>%
+    mutate(block = "M") %>%
+    group_by(block, age_group, motivation) %>%
+    summarise(err = mean(err)) %>%
+    pivot_wider(names_from = motivation, values_from = err)
+
+err_plot <- err_plot %>%
+    full_join(err_m_plot)
+
+
+p <- ggplot(err_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
+    geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
+    geom_line(aes(y = as.numeric(low)), size = 2.3) +
+    geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
+    theme_minimal() +
+    theme(legend.position = "none",
+          axis.text.x = element_text(colour = "black", size = 28),
+          axis.text.y = element_text(colour = "black", size = 28),
+          axis.title.x = element_text(colour = "black", size = 38),
+          axis.title.y = element_text(colour = "black", size = 38)) +
+    #geom_vline(xintercept=8.5, color = "black", size=1) +
+    labs(x = "Block", y = "Error (%)", fill)
+p
+png(filename="figures/err.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+print(p)
+dev.off()
+
+## IE----
+
+ie_plot <- ie %>%
+    mutate(block = as.character(block), age_group = ifelse(participant > 10600, "older", "young")) %>%
+    group_by(block, age_group) %>%
+    summarise(low = mean(ie), high = mean(ie))
+
+ie_m_plot <- ie_m_reduced %>%
+    mutate(block = "M", age_group = ifelse(participant > 10600, "older", "young")) %>%
+    group_by(block, age_group, motivation) %>%
+    summarise(ie = mean(ie_9)) %>%
+    pivot_wider(names_from = motivation, values_from = ie)
+
+ie_plot <- ie_plot %>%
+    full_join(ie_m_plot)
+
+
+p <- ggplot(ie_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
+    geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
+    geom_line(aes(y = as.numeric(low)), size = 2.3) +
+    geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1, guide="none") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(colour = "black", size = 28),
+          axis.text.y = element_text(colour = "black", size = 28),
+          axis.title.x = element_text(colour = "black", size = 38),
+          axis.title.y = element_text(colour = "black", size = 38),
+          legend.text = element_text(colour = "black", size = 20),
+          legend.title = element_text(colour = "black", size = 28)) +
+    labs(x = "Block", y = "IE", colour = "Age group")
+p
+png(filename="figures/ie.png", width = 800, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+print(p)
+dev.off()
+
