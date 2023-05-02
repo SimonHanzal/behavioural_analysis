@@ -81,6 +81,14 @@ neural_nogo <- nogo_data %>%
     inner_join(neural_rejections_intersect)
 
 # Description----
+
+
+skew(neural_rt$Stimulus.RT)
+
+hist(neural_rt$Stimulus.RT)
+
+skew(log(neural_rt$Stimulus.RT))
+
 hist(log(neural_rt$Stimulus.RT))
 # log_transform necessary
 

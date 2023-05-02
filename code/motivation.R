@@ -277,6 +277,60 @@ selection <- err_all %>%
 model <- lm(err ~ motivation*age_group, selection)
 summary(model)
 
+# Testing akin ie----
+err_all_long <- err_all %>%
+    pivot_longer(3:4, names_to="block_section", values_to="err_level")
+
+## Actual ERR----
+
+err_all_long_test <- err_all_long %>%
+    mutate(participant = as.character(participant),
+           block_section = as.character(block_section),
+           age_group = as.character(age_group),
+           motivation = as.character(motivation))
+model <- ezANOVA(
+    err_all_long_test,
+    dv = err_level,
+    wid = .(participant),
+    within = .(block_section),
+    between = .(age_group, motivation),
+    type = 2,
+    detailed = TRUE,
+    return_aov = TRUE
+)
+test <- as.data.frame(model$ANOVA)
+options(scipen = 999)
+test
+summary(model$aov)
+library(nlme)
+
+## Actual RT----
+rt_all_long <- rt_all %>%
+    pivot_longer(2:3, names_to="block", values_to="rt_level")
+
+rt_all_long_test <- rt_all_long %>%
+    mutate(participant = as.character(participant),
+           block = as.character(block),
+           age_group = as.character(age_group),
+           motivation = as.character(motivation))
+
+model <- ezANOVA(
+    rt_all_long_test,
+    dv = rt_level,
+    wid = .(participant),
+    within = .(block),
+    between = .(age_group, motivation),
+    type = 2,
+    detailed = TRUE,
+    return_aov = TRUE
+)
+test <- as.data.frame(model$ANOVA)
+options(scipen = 999)
+test
+summary(model$aov)
+library(nlme)
+
+
 
 
 # Plotting----

@@ -11,6 +11,7 @@ library(readxl)
 library(broom)
 library(lme4)
 library(psych)
+library(ez)
 
 # General----
  
@@ -492,7 +493,7 @@ model <- lmer(ie ~ block*age_group * (1|participant), ie)
 summary(model)
 
 
-# Interaction decompose----
+# Interaction 89S----
 
 ## Inverse Efficiency
 compare_motivation <- rt_motivation %>%
@@ -671,26 +672,33 @@ ggplot(selection_plot, aes(x = time, y = ie_value, fill = reduction)) +
 ie_all_long <- ie_all %>%
     pivot_longer(2:3, names_to="block", values_to="ie_level")
 
-ie_all_long <- ie_all_long %>%
+# Actual----
+
+ie_all_long_test <- ie_all_long %>%
     mutate(participant = as.character(participant),
            block = as.character(block),
-           age_group = as.character(age_group))
+           age_group = as.character(age_group),
+           motivation = as.character(motivation))
 model <- ezANOVA(
-	ie_all_long,
+    ie_all_long_test,
 	dv = ie_level,
 	wid = .(participant),
 	within = .(block),
-    between = .(age_group),
+    between = .(age_group, motivation),
 	type = 2,
-	detailed = TRUE
+	detailed = TRUE,
+    return_aov = TRUE
 )
-model
-
+test <- as.data.frame(model$ANOVA)
+options(scipen = 999)
+summary(model$aov)
+library(nlme)
 ##ERR
-model <- lm(ie_level ~ age_group*motivation, ie_all_long)
+model <- lm(ie_level ~ age_group*block, ie_all_long_test)
 summary(model)
 
-m_em <- emmeans(model, c( "age_group", "motivation"))
+
+m_em <- emmeans(model, c( "age_group", "block"))
 test(m_em)
 
 contrast(m_em, 'tukey') %>%

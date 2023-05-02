@@ -81,6 +81,51 @@ png(filename="figures/corrected_anova.png", width = 600, height = 600, units = "
 print(p)
 dev.off()
 
+# Brain-Subjective----
+
+## Uncorrected----
+signal_uncorrected_1 <- signal_uncorrected %>%
+    filter(time == "post") %>%
+    rename(vas_post = vas, wan_post = wan, signal_post = signal) %>%
+    select(-time)
+
+signal_uncorrected_2 <- signal_uncorrected %>%
+    filter(time == "pre") %>%
+    rename(vas_pre = vas, wan_pre = wan, signal_pre = signal) %>%
+    select(-time)
+
+signal_uncorrected_3 <- signal_uncorrected_1 %>%
+    inner_join(signal_uncorrected_2, by = c("participant", "age_group", "type")) %>%
+    mutate(signal = signal_post - signal_pre, vas = vas_post - vas_pre, wan = wan_post - wan_pre)
+
+
+model <- lm(vas ~ signal, signal_uncorrected_3)
+summary(model)
+
+model <- lm(wan ~ signal, signal_uncorrected_3)
+summary(model)
+## Corrected----
+
+signal_corrected_1 <- signal_corrected %>%
+    filter(time == "post") %>%
+    rename(vas_post = vas, wan_post = wan, signal_post = signal) %>%
+    select(-time)
+
+signal_corrected_2 <- signal_corrected %>%
+    filter(time == "pre") %>%
+    rename(vas_pre = vas, wan_pre = wan, signal_pre = signal) %>%
+    select(-time)
+
+signal_corrected_3 <- signal_corrected_1 %>%
+    inner_join(signal_corrected_2, by = c("participant", "age_group", "type")) %>%
+    mutate(signal = signal_post - signal_pre, vas = vas_post - vas_pre, wan = wan_post - wan_pre)
+
+
+model <- lm(vas ~ signal, signal_corrected_3)
+summary(model)
+
+model <- lm(wan ~ signal, signal_corrected_3)
+summary(model)
 
 #    geom_errorbar(aes(ymin = as.numeric(`signal (db)`)-sd, ymax = as.numeric(`signal (db)`)+sd), position = "dodge", size = 0.3)
 
