@@ -6,13 +6,18 @@ library(readxl)
 library(ez)
 library(Cairo)
 
+
+splinter <- function(dataset, var, sub_part) {
+    splintered <- filter(dataset, {{ var }} == sub_part)
+}
+
+
+
 signal <- read_excel("data/290423_anova.xlsx")
 
-signal_uncorrected <- signal %>%
-    filter(type == "uncorrected")
+signal_uncorrected <- splinter(signal, type, "uncorrected")
 
-signal_corrected <- signal %>%
-    filter(type == "corrected")
+signal_corrected <- splinter(signal, type, "corrected")
 
 signal_motivation <- read_excel("data/290423_anova_motivation.xlsx")
 
