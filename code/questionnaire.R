@@ -3,8 +3,8 @@
 # Setup----
 
 # Modify path as needed depending on where the files are stored in your device
-#path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 setwd(path)
 library(tidyverse)
 library(viridis)

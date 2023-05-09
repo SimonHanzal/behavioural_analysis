@@ -3,8 +3,8 @@
 # Setup----
 
 # Modify path as needed depending on where the files are stored in your device
-#path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 setwd(path)
 library(tidyverse)
 library(readxl)
@@ -335,8 +335,8 @@ library(nlme)
 
 # Plotting----
 
-# path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
-path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation\newer_plots)"
+ path = r"(C:\Users\hanza\OneDrive\Dokumenty\R\plots)"
+#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation\newer_plots)"
 
 plot_rt_m_young <- ggplot(filter(rt_motivation, age_group=="young"), aes(x = motivation, y = as.numeric(rt), fill = motivation)) +
   geom_violin(alpha = 0.4, adjust  = 0.8) +
