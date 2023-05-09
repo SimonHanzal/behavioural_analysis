@@ -4,4 +4,6 @@
 .Ruserdata
 older/
 ie_compilation/
+data/
+figures/
 .behavioural_rejections.csv
