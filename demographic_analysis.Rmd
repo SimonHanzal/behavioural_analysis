@@ -136,6 +136,7 @@ model <- ezANOVA(
 )
 model
 
+demo_clean <- demographic_data
 demo_clean_lm <- demo_clean %>%
     pivot_longer(c(`pre-vas`, `post-vas`), names_to = "timepoint", values_to = "vas") %>%
     mutate(timepoint = recode(timepoint, "pre-vas" = 1, "post-vas" = 0)) %>%
@@ -314,3 +315,43 @@ model <- lm(vas_change ~ wan_change, all_subjective_anova)
 summary(model)
 ```
 
+```{r}
+recent_unrelated <- read_excel("unrelated.xlsx") %>%
+    mutate(brain_change = post-pre) %>%
+    select(participant, brain_change)
+
+recent_related <- read_excel("related.xlsx") %>%
+    mutate(brain_change = post-pre) %>%
+    select(participant, brain_change)
+
+just_vas_related <- demographic_data %>%
+    mutate(participant = ID) %>%
+    select(participant, `dif-vas`) %>%
+    inner_join(recent_related, by = "participant")
+
+just_vas_unrelated <- demographic_data %>%
+    mutate(participant = ID) %>%
+    select(participant, `dif-vas`) %>%
+    inner_join(recent_unrelated, by = "participant")
+
+model <- lm(brain_change ~ `dif-vas`, just_vas_related)
+summary(model)
+
+model <- lm(brain_change ~ `dif-vas`, just_vas_unrelated)
+summary(model)
+
+plot_vas<- ggplot(filter(demo_clean_lm), aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(timepoint))) +
+  geom_violin(alpha = 0.85, adjust  = 0.8) +
+  geom_boxplot(alpha = 0.85, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="white") +
+  geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.85) +
+  geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.4) +
+  ggtitle("Subjective Fatigue change") +
+  xlab("Time") +
+  ylab("Total Score") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "B") +
+  scale_fill_viridis_d(option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
+  theme(legend.position = 0, text=element_text(size=48, family="Tahoma", colour="white"), axis.text=element_text(size=36, colour="white"), plot.background = element_rect(fill = "#262626"))
+plot_vas
+```

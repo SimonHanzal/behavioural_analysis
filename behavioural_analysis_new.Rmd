@@ -1522,3 +1522,61 @@ ggsave(plot_beta_young, filename = 'newer_plots/beta_young.png', path = path, dp
 ggsave(plot_beta_older, filename = 'newer_plots/beta_older.png', path = path, dpi = 1200, type = 'cairo', width = 10, height = 4.5, units = 'in', bg = 'white')
 
 ```
+
+## VSS
+
+### RT
+
+```{r}
+rt_plots <- rt_natural %>%
+    group_by(age_group, block) %>%
+    summarise(rt = mean(rt))
+
+err_plots <- err %>%
+    mutate(age_group = ifelse(participant > 10600, "older", "young")) %>%
+    group_by(age_group, block) %>%
+    summarise(err = mean(err))
+
+ie_plots <- ie %>%
+    mutate(age_group = ifelse(participant > 10600, "Older", "Young")) %>%
+    group_by(age_group, block) %>%
+    summarise(ie = mean(ie))
+
+plot_rt <- ggplot(rt_plots, aes(x = as.factor(block), y = as.numeric(rt), color = as.factor(age_group), group=age_group, col=age_group)) +
+  geom_point(size = 5, alpha = 0.9) +
+  geom_path(aes(col = age_group, group = age_group), size = 3, alpha = 0.9) +
+  ggtitle("A") +
+  xlab("Block") +
+  ylab("") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  scale_y_continuous(limits = c(400, 600)) +
+  scale_fill_viridis_d(limits=rev, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  theme(legend.position = 0, text=element_text(size=28, family="Tahoma", colour="black"), axis.text=element_text(size=28, colour="black"), plot.background = element_rect(fill = "white"),panel.border = element_blank())
+
+plot_nogo <- ggplot(err_plots, aes(x = as.factor(block), y = as.numeric(err), color = as.factor(age_group), group=age_group, col=age_group)) +
+  geom_point(size = 5, alpha = 0.9) +
+  geom_path(aes(col = age_group, group = age_group), size = 3, alpha = 0.9) +
+  ggtitle("B") +
+  xlab("Block") +
+  ylab("") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  scale_y_continuous(limits = c(0, 30)) +
+  scale_fill_viridis_d(limits=rev, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  theme(legend.position = 0, text=element_text(size=28, family="Tahoma", colour="black"), axis.text=element_text(size=28, colour="black"), plot.background = element_rect(fill = "white"),panel.border = element_blank())
+
+
+plot_ie <- ggplot(ie_plots, aes(x = as.factor(block), y = as.numeric(ie), color = as.factor(age_group), group=age_group, col=age_group)) +
+  geom_point(size = 5, alpha = 0.9) +
+  geom_path(aes(col = age_group, group = age_group), size = 3, alpha = 0.9) +
+  ggtitle("C") +
+  xlab("Block") +
+  ylab("") +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  scale_y_continuous(limits = c(5, 7)) +
+  scale_fill_viridis_d(limits=rev, option = "B", begin = 0.3, end = 0.9,direction=-1) +
+  labs(color = "Age group") +
+  theme(text=element_text(size=28, family="Tahoma", colour="black"), axis.text=element_text(size=28, colour="black"), plot.background = element_rect(fill = "white"),panel.border = element_blank())
+```
