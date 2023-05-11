@@ -95,7 +95,7 @@ p <- ggplot(vas_anova, aes(x = as.factor(timepoint), y = as.numeric(vas), fill =
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
     geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="#7F7F7F") +
-    labs(x = "Time", y = "Total score", fill = "Age group") +
+    labs(x = "Time", y = "Total VAS score", fill = "Age group") +
     theme_minimal() +
     scale_color_viridis_d(option = "B", guide="none") +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, labels=c("0" = "young", "1" = "older")) +
@@ -126,7 +126,7 @@ p <- ggplot(wan_anova, aes(x = as.factor(timepoint), y = as.numeric(wan), fill =
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
     geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="#7F7F7F") +
-    labs(x = "Time", y = "Total score", fill = "Age group") +
+    labs(x = "Time", y = "Total MWS score", fill = "Age group") +
     theme_minimal() +
     scale_color_viridis_d(option = "B", guide="none") +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, labels=c("0" = "young", "1" = "older")) +
