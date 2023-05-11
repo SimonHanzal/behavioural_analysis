@@ -316,5 +316,20 @@ png(filename="figures/uncorrected_moti_anova_1_contrast.png", width = 800, heigh
 print(p)
 dev.off()
 
+# ERP test----
+
+#import
+erp_anova <- read_csv("data/erp_confirmation.csv",col_names = FALSE) %>%
+    rename("early" = X1, "late" = X2)
+
+t.test(erp_anova$early, erp_anova$late, paired=TRUE)
+
+erp_eye_anova <- read_csv("data/erp_eye_confirmation.csv",col_names = FALSE) %>%
+    rename("early" = X1, "late" = X2)
+
+t.test(erp_eye_anova$early, erp_eye_anova$late, paired=TRUE)
+
+#test anova
+
 
 
