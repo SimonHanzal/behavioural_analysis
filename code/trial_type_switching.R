@@ -76,6 +76,93 @@ tt_switching_mistake_summary <- tt_switching_mistake %>%
 ggplot(tt_switching_mistake_summary) +
     geom_line(aes(x = since, y = mean, color = as.character(age_group)))
 
+## Poster
+
+tt_switching_mistake_summary <- tt_switching_switch %>%
+    group_by(after, age_group, participant) %>%
+    summarise(mean = mean(Stimulus.RT)) %>%
+    filter(after <= 50) 
+
+rt_natural_unite <- rt_natural %>%
+    group_by(participant)%>%
+    summarise(mean_overall = mean(rt), participant = as.character(participant))
+
+tt_compare <- tt_switching_mistake_summary %>%
+    mutate(participant = as.character(participant)) %>%
+    inner_join(rt_natural_unite, by = "participant") %>%
+    mutate(difference = mean / mean_overall) %>%
+    group_by(after, age_group) %>%
+    summarise(mean = mean(difference)) %>%
+    filter(after <= 10) 
+
+
+threes_statistic <- tt_switching_switch %>%
+    group_by(since, age_group, participant) %>%
+    summarise(mean = mean(Stimulus.RT))
+#
+threes_reaction <- threes_statistic %>%
+    mutate(participant = as.character(participant)) %>%
+    inner_join(rt_natural_unite, by = "participant") %>%
+    mutate(difference = log(mean) / log(mean_overall)) %>%
+    #mutate(difference = log(mean)) %>%
+    group_by(since, age_group, participant) %>%
+    na.omit(Stimulus.RT) %>%
+    summarise(mean = mean(as.numeric(difference))) %>%
+    filter(since <= 1) %>%
+    mutate(since = ifelse(since <= 0, 0, 1)) %>%
+    mutate(participant = as.character(participant), since = as.character(since),
+           age_group = as.character(age_group))
+
+ggplot(threes_reaction) +
+    geom_violin(aes(x = as.character(since), y = mean, color = as.character(age_group)))
+
+
+model <- ezANOVA(
+    threes_reaction
+    , dv = mean
+    , wid = participant
+    , within = since
+    , between = age_group
+)
+model
+#
+library(ez)
+
+threes_statistic <- tt_switching_switch %>%
+    group_by(after, age_group, participant) %>%
+    filter((trig == 3 || trig == 6) & Stimulus.ACC == 0) %>%
+    summarise(mean = mean(Stimulus.RT)) %>%
+    mutate(participant = as.character(participant), after = as.character(after),
+           age_group = as.character(age_group))
+n = 4
+threes_reaction <- threes_statistic %>%
+    filter(participant != 15003) %>%
+    filter(participant != 15501) %>%
+    filter(as.numeric(after) <= 1) %>%
+    inner_join(rt_natural_unite, by = "participant") %>%
+    mutate(difference = log(mean) / log(mean_overall)) %>%
+    mutate(after = ifelse(after <= 1, 0, 1)) %>%
+    #mutate(difference = mean) %>%
+    group_by(after, age_group, participant) %>%
+    na.omit(Stimulus.RT) %>%
+    summarise(mean = mean(as.numeric(difference))) %>%
+    #filter(after == 5) %>%
+    mutate(participant = as.character(participant), after = as.character(after),
+           age_group = as.character(age_group))
+
+ggplot(threes_reaction) +
+    geom_violin(aes(x = as.character(after), y = mean, color = as.character(age_group)))
+
+
+model <- ezANOVA(
+    threes_reaction
+    , dv = mean
+    , wid = participant
+    , within = after
+    , between = age_group
+)
+model
+
 # Stimulus occurence----
 
 tt_switching_switch <- tt_switching_since %>%
@@ -197,4 +284,31 @@ tt_1 <- tt_switching_switch_clean %>%
 
 write.csv2(tt_0, filename=here("data", "processed", "tt_0.csv"))
 
+## Just switch 1----
 
+rt_natural_tt <- rt_natural %>%
+    group_by(age_group) %>%
+    summarise(mean_overall = mean(rt)) %>%
+    mutate(age_group = as.character(age_group))
+
+tt_switching_switch_ttest <-tt_switching_switch %>%
+    filter(since == 1) %>%
+    filter(trig != 3) %>%
+    filter(trig != 6) %>%
+    filter(Stimulus.ACC == 1) %>%
+    group_by(participant, age_group) %>%
+    summarise(mean = mean(Stimulus.RT)) 
+
+%>%
+    mutate(age_group = as.character(age_group)) %>%
+    inner_join(rt_natural_tt, by = "age_group") %>%
+    mutate(difference = mean-mean_overall)
+
+young <- tt_switching_switch_ttest %>%
+    filter(age_group == 0)
+
+older <- tt_switching_switch_ttest %>%
+    filter(age_group == 1)
+
+model <- t.test(young$difference, older$difference)
+model

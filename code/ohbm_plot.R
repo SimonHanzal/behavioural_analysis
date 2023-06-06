@@ -91,62 +91,66 @@ geom_split_violin <- function(mapping = NULL,
 ## VAS----
 
 p <- ggplot(vas_anova, aes(x = as.factor(timepoint), y = as.numeric(vas), fill = as.factor(age_group))) +
-    geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
+    geom_split_violin(alpha = 0.8, adjust  = 0.8, color="black") +
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
-    geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="#7F7F7F") +
+    geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="black") +
     labs(x = "Time", y = "Total VAS score", fill = "Age group") +
     theme_minimal() +
     scale_color_viridis_d(option = "B", guide="none") +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, labels=c("0" = "young", "1" = "older")) +
     scale_x_discrete(labels=c("1" = "Pre-task", "0" = "Post-task"), limits=rev) +
     theme(text=element_text(size=18), axis.text=element_text(size=16),
-          panel.background = element_rect(fill='transparent', color=NA),
-          plot.background = element_rect(fill='transparent', color=NA),
-          legend.background = element_rect(fill='transparent', color=NA),
-          legend.box.background = element_rect(fill='transparent', color=NA),
-          axis.text.x = element_text(colour = "#7F7F7F", size = 48),
-          axis.text.y = element_text(colour = "#7F7F7F", size = 48),
-          legend.text = element_text(colour = "#7F7F7F", size = 48),
-          axis.title.x = element_text(colour = "#7F7F7F", size = 64),
-          axis.title.y = element_text(colour = "#7F7F7F", size = 64),
-          legend.title = element_text(colour = "#7F7F7F", size = 48),
+          panel.background = element_rect(fill='white', color=NA),
+          plot.background = element_rect(fill='white', color=NA),
+          legend.background = element_rect(fill='white', color=NA),
+          legend.box.background = element_rect(fill='white', color=NA),
+          axis.text.x = element_text(colour = "black", size = 48),
+          axis.text.y = element_text(colour = "black", size = 48),
+          legend.text = element_text(colour = "black", size = 48),
+          axis.title.x = element_text(colour = "black", size = 64),
+          axis.title.y = element_text(colour = "black", size = 64),
+          legend.title = element_text(colour = "black", size = 48),
+          panel.grid.minor=element_line(colour="darkgrey"),
+          panel.grid.major=element_line(colour="darkgrey"),
           legend.position="bottom"
     )
 set.seed(1)
 p
-png(filename="figures/vas.png", width = 1600, height = 800, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/ohbm_vas.png", width = 1000, height = 1000, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 
 ## WAN----
 
 p <- ggplot(wan_anova, aes(x = as.factor(timepoint), y = as.numeric(wan), fill = as.factor(age_group))) +
-    geom_split_violin(alpha = 0.8, adjust  = 0.8, color="#7F7F7F") +
+    geom_split_violin(alpha = 0.8, adjust  = 0.8, color="black") +
     #geom_point(aes(colour = as.factor(ID)),shape = 4, alpha = 0.5) +
     geom_line(aes(colour = as.factor(ID)), group= 1, alpha = 0.6) +
-    geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="#7F7F7F") +
+    geom_boxplot(alpha = 0.7, varwidth = TRUE, width = 0.45, outlier.shape = NA, coef = 0, color="black") +
     labs(x = "Time", y = "Total MWS score", fill = "Age group") +
     theme_minimal() +
     scale_color_viridis_d(option = "B", guide="none") +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, labels=c("0" = "young", "1" = "older")) +
     scale_x_discrete(labels=c("0" = "Pre-task", "1" = "Post-task")) +
     theme(text=element_text(size=18), axis.text=element_text(size=16),
-          panel.background = element_rect(fill='transparent', color=NA),
-          plot.background = element_rect(fill='transparent', color=NA),
-          legend.background = element_rect(fill='transparent', color=NA),
-          legend.box.background = element_rect(fill='transparent', color=NA),
-          axis.text.x = element_text(colour = "#7F7F7F", size = 48),
-          axis.text.y = element_text(colour = "#7F7F7F", size = 48),
-          legend.text = element_text(colour = "#7F7F7F", size = 48),
-          axis.title.x = element_text(colour = "#7F7F7F", size = 64),
-          axis.title.y = element_text(colour = "#7F7F7F", size = 64),
-          legend.title = element_text(colour = "#7F7F7F", size = 48),
+          panel.background = element_rect(fill='white', color=NA),
+          plot.background = element_rect(fill='white', color=NA),
+          legend.background = element_rect(fill='white', color=NA),
+          legend.box.background = element_rect(fill='white', color=NA),
+          axis.text.x = element_text(colour = "black", size = 48),
+          axis.text.y = element_text(colour = "black", size = 48),
+          legend.text = element_text(colour = "black", size = 48),
+          axis.title.x = element_text(colour = "black", size = 64),
+          axis.title.y = element_text(colour = "black", size = 64),
+          legend.title = element_text(colour = "black", size = 48),
+          panel.grid.minor=element_line(colour="darkgrey"),
+          panel.grid.major=element_line(colour="darkgrey"),
           legend.position="bottom"
     )
 set.seed(1)
 p
-png(filename="figures/wan.png", width = 1600, height = 800, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/ohbm_wan.png", width = 1000, height = 1000, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 
@@ -162,17 +166,18 @@ rt_natural_plot <- rt_natural %>%
 rt_natural_m_plot <- rt_natural_m %>%
     mutate(block = "M") %>%
     group_by(block, age_group, motivation) %>%
-    summarise(rt = mean(rt), sd = sd(rt) %>%
+    summarise(rt = mean(rt)) %>%
     pivot_wider(names_from = motivation, values_from = rt)
 
 rt_plot <- rt_natural_plot %>%
     full_join(rt_natural_m_plot)
 
 
-p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
+p <- ggplot(rt_natural_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
     geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
     geom_line(aes(y = as.numeric(low)), size = 2.3) +
     geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    geom_errorbar(aes(ymin = low-sd, ymax = low+sd)) +
     scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     theme_minimal() +
@@ -184,7 +189,7 @@ p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colo
     #geom_vline(xintercept=8.5, color = "black", size=1) +
     labs(x = "Block", y = "RT (ms)", fill)
 p
-png(filename="figures/rt.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+png(filename="figures/ohbm_rt.png", width = 800, height = 1000, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 
@@ -193,7 +198,7 @@ dev.off()
 err_plot <- err %>%
     mutate(block = as.character(block), age_group = ifelse(participant > 10600, "older", "young")) %>%
     group_by(block, age_group) %>%
-    summarise(low = mean(err), high = mean(err))
+    summarise(low = mean(err), high = mean(err), sd = sd(err))
 
 err_m_plot <- err_m %>%
     mutate(block = "M") %>%
@@ -209,6 +214,7 @@ p <- ggplot(err_plot, aes(x = as.factor(block), fill = as.factor(age_group), col
     geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
     geom_line(aes(y = as.numeric(low)), size = 2.3) +
     geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    geom_errorbar(aes(ymin = low-sd, ymax = low+sd)) +
     scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     theme_minimal() +
@@ -220,7 +226,7 @@ p <- ggplot(err_plot, aes(x = as.factor(block), fill = as.factor(age_group), col
     #geom_vline(xintercept=8.5, color = "black", size=1) +
     labs(x = "Block", y = "Error (%)", fill)
 p
-png(filename="figures/err.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+png(filename="figures/ohbm_err.png", width = 800, height = 1000, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 
@@ -229,7 +235,7 @@ dev.off()
 ie_plot <- ie %>%
     mutate(block = as.character(block), age_group = ifelse(participant > 10600, "older", "young")) %>%
     group_by(block, age_group) %>%
-    summarise(low = mean(ie), high = mean(ie))
+    summarise(low = mean(ie), high = mean(ie), sd = sd(ie))
 
 ie_m_plot <- ie_m_reduced %>%
     mutate(block = "M", age_group = ifelse(participant > 10600, "older", "young")) %>%
@@ -245,6 +251,7 @@ p <- ggplot(ie_plot, aes(x = as.factor(block), fill = as.factor(age_group), colo
     geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
     geom_line(aes(y = as.numeric(low)), size = 2.3) +
     geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    geom_errorbar(aes(ymin = low-sd, ymax = low+sd)) +
     scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1, guide="none") +
     theme_minimal() +
@@ -256,7 +263,7 @@ p <- ggplot(ie_plot, aes(x = as.factor(block), fill = as.factor(age_group), colo
           legend.title = element_text(colour = "black", size = 28)) +
     labs(x = "Block", y = "IE", colour = "Age group")
 p
-png(filename="figures/ie.png", width = 800, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+png(filename="figures/ohbm_ie.png", width = 800, height = 1000, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 
