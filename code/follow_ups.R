@@ -12,14 +12,15 @@ splinter <- function(dataset, var, sub_part) {
 }
 
 
-
-signal <- read_excel("data/290423_anova.xlsx")
+# signal <- read_excel("data/290423_anova.xlsx")
+signal <- read_excel("data/290423_anova_1.xlsx")
 
 signal_uncorrected <- splinter(signal, type, "uncorrected")
 
 signal_corrected <- splinter(signal, type, "corrected")
 
-signal_motivation <- read_excel("data/290423_anova_motivation.xlsx")
+# signal_motivation <- read_excel("data/290423_anova_motivation.xlsx")
+signal_motivation <- read_excel("data/290423_anova_motivation_1.xlsx")
 
 signal_uncorrected_motivation <- signal_motivation %>%
     filter(type == "uncorrected")
@@ -46,6 +47,27 @@ model <- ezANOVA(
     detailed = TRUE
 )
 model
+
+df <- signal_uncorrected %>%
+    mutate(time = recode(time, `pre` = "first", `post` = "last")) %>%
+    rename(`Age group` = age_group, Block = time) %>%
+    group_by(Block, `Age group`) %>%
+    summarise(`signal` = mean(signal), sd = as.numeric(sd(abs(signal))))
+
+p <- ggplot(df, aes(x = Block, y = `signal`, fill = `Age group`)) +
+    geom_col(position = "dodge") +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1, guide="none") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(colour = "#7F7F7F", size = 28),
+          axis.text.y = element_text(colour = "#7F7F7F", size = 28),
+          axis.title.x = element_text(colour = "#7F7F7F", size = 38),
+          axis.title.y = element_text(colour = "#7F7F7F", size = 38),
+          legend.text = element_text(colour = "#7F7F7F", size = 20),
+          legend.title = element_text(colour = "#7F7F7F", size = 28))
+p
+png(filename="figures/uncorrected_anova_1.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+print(p)
+dev.off()
 
 ## Corrected----
 
@@ -82,7 +104,7 @@ p <- ggplot(df, aes(x = Block, y = `signal (db)`, fill = `Age group`)) +
           legend.text = element_text(colour = "#7F7F7F", size = 20),
           legend.title = element_text(colour = "#7F7F7F", size = 28))
 p
-png(filename="figures/corrected_anova.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/corrected_anova_1.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
 print(p)
 dev.off()
 
@@ -171,7 +193,7 @@ p <- ggplot(df, aes(x = Block, y = `signal`, fill = `Age group`)) +
           legend.text = element_text(colour = "#7F7F7F", size = 20),
           legend.title = element_text(colour = "#7F7F7F", size = 28))
 p
-png(filename="figures/uncorrected_anova.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/uncorrected_anova_1.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
 print(p)
 dev.off()
 
@@ -226,20 +248,23 @@ df <- signal_corrected %>%
     group_by(`Age group`, Block, Motivation) %>%
     summarise(`signal (db)` = mean(signal))
 
-p <- ggplot(df, aes(x = Block, y = `signal (db)`, fill = `Age group`, alpha = Motivation, colour = Motivation)) +
-    geom_col(position = "dodge") +
-    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
-    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9) +
+p <- ggplot(df, aes(x = Block, y = `signal (db)`, alpha = Motivation, colour = `Age group`), fill = "white") +
+    geom_col(position = "dodge", size = 3.5) +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1, guide="none") +
+    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
 #    scale_alpha_discrete(guide = "none")+
     theme_minimal() +
-    theme(axis.text.x = element_text(colour = "#7F7F7F", size = 28),
-          axis.text.y = element_text(colour = "#7F7F7F", size = 28),
-          axis.title.x = element_text(colour = "#7F7F7F", size = 38),
-          axis.title.y = element_text(colour = "#7F7F7F", size = 38),
-          legend.text = element_text(colour = "#7F7F7F", size = 20),
-          legend.title = element_text(colour = "#7F7F7F", size = 28))
+    theme(axis.text.x = element_text(colour = "#7F7F7F", size = 20),
+          axis.text.y = element_text(colour = "#7F7F7F", size = 20),
+          axis.title.x = element_text(colour = "#7F7F7F", size = 28),
+          axis.title.y = element_text(colour = "#7F7F7F", size = 28),
+          legend.text = element_text(colour = "#7F7F7F", size = 28),
+          legend.title = element_text(colour = "#7F7F7F", size = 32),
+          strip.text.x = element_blank()
+    ) +
+    facet_wrap(. ~ `Age group`)
 p
-png(filename="figures/corrected_moti_anova.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/corrected_moti_anova_1_contrast.png", width = 900, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
 print(p)
 dev.off()
 
@@ -270,22 +295,41 @@ df <- signal_uncorrected %>%
     summarise(`signal` = mean(signal)) #%>%
    # mutate(Motivation = ifelse(Motivation = "demotivated", 0.3,0.7))
 
-p <- ggplot(df, aes(x = Block, y = `signal`, fill = `Age group`, alpha = Motivation, colour = Motivation)) +
-    geom_col(position = "dodge") +
-    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
-    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9) +
+p <- ggplot(df, aes(x = Block, y = `signal`, alpha = Motivation, colour = `Age group`), fill = "white") +
+    geom_col(position = "dodge", size=3.5) +
+    scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1, guide="none") +
+    scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     #    scale_alpha_discrete(guide = "none")+
     theme_minimal() +
-    theme(axis.text.x = element_text(colour = "#7F7F7F", size = 28),
-          axis.text.y = element_text(colour = "#7F7F7F", size = 28),
-          axis.title.x = element_text(colour = "#7F7F7F", size = 38),
-          axis.title.y = element_text(colour = "#7F7F7F", size = 38),
+    theme(axis.text.x = element_text(colour = "#7F7F7F", size = 20),
+          axis.text.y = element_text(colour = "#7F7F7F", size = 20),
+          axis.title.x = element_text(colour = "#7F7F7F", size = 28),
+          axis.title.y = element_text(colour = "#7F7F7F", size = 28),
           legend.text = element_text(colour = "#7F7F7F", size = 20),
-          legend.title = element_text(colour = "#7F7F7F", size = 28))
+          legend.title = element_text(colour = "#7F7F7F", size = 28),
+          legend.position='none',
+          strip.text.x = element_blank()
+    ) +
+    facet_wrap(. ~ `Age group`)
 p
-png(filename="figures/uncorrected_moti_anova.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
+png(filename="figures/uncorrected_moti_anova_1_contrast.png", width = 800, height = 600, units = "px", pointsize = 12, bg = "#262626", type="cairo")
 print(p)
 dev.off()
+
+# ERP test----
+
+#import
+erp_anova <- read_csv("data/erp_confirmation.csv",col_names = FALSE) %>%
+    rename("early" = X1, "late" = X2)
+
+t.test(erp_anova$early, erp_anova$late, paired=TRUE)
+
+erp_eye_anova <- read_csv("data/erp_eye_confirmation.csv",col_names = FALSE) %>%
+    rename("early" = X1, "late" = X2)
+
+t.test(erp_eye_anova$early, erp_eye_anova$late, paired=TRUE)
+
+#test anova
 
 
 
