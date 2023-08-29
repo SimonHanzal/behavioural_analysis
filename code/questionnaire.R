@@ -151,5 +151,5 @@ demo_export <- demo_clean %>%
     mutate(subjective_difference = `dif-vas`) %>%
     select(ID, subjective_difference)
 
-write.csv(demo_export, "subjective_difference.csv")
+#write.csv(demo_export, "subjective_difference.csv")
 

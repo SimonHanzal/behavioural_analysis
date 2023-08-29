@@ -104,7 +104,32 @@ rt_natural <- neural_rt %>%
   summarise(rt = mean(Stimulus.RT), sd = sd(Stimulus.RT),
             min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n()) %>%
   mutate(age_group = ifelse(participant >= 10600, "older", "young"))
-  
+
+nogo_rt <- nogo_data %>%
+    filter(Stimulus.RT > 150) %>%
+    group_by(block, participant) %>%
+    summarise(rt = mean(Stimulus.RT), sd = sd(Stimulus.RT),
+              min = min(Stimulus.RT), max = max(Stimulus.RT), trials = n()) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young"))
+
+nogo_rt_anova_avg <- nogo_data %>%
+    filter(Stimulus.RT > 150) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    group_by(participant, age_group) %>%
+    summarise(mean_rt = mean(Stimulus.RT)) %>%
+    mutate(rt_overall = log(mean_rt)) %>%
+    mutate(type = "incorrect")
+
+nogo_rt_anova_number <- nogo_data %>%
+    filter(Stimulus.RT > 150) %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    group_by(participant, age_group) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+#    group_by(age_group) %>%
+    summarise(mean = mean(n), sd = sd(n))
 
 # calculate change score
 rt_change <-  rt %>%
@@ -129,6 +154,14 @@ rt_summary <- rt_natural %>%
     group_by(age_group) %>%
     summarise(mean = mean(rt), sd = sd(rt), min = min(rt), max = max(rt))
 
+nogo_rt_anova <- nogo_rt %>%
+    mutate(age_group = ifelse(participant >= 10600, "older", "young")) %>%
+    filter(block == 1 | block == 8) %>%
+    mutate(age_group = recode(age_group, "young" = 0, "older" = 1)) %>%
+    mutate(block = recode(block, "1" = 0, "8" = 1)) %>%
+    # remove incomplete participants
+    filter(participant != 10008 & participant != 10506 & participant != 15507) %>%
+    mutate(log_rt = log(rt))
 
 ## Error----
 
@@ -264,7 +297,7 @@ rt_test <- rt %>%
 
 rt_test <- t.test(rt_test$`1`, rt_test$`8`, paired = TRUE)
 tidy(rt_test)
-# error change
+### error change----
 err_test <- err %>%
   filter(block == 1 | block == 8) %>%
   select(participant, block, err) %>%
@@ -321,6 +354,13 @@ model <- ezANOVA(
 )
 model
 
+err <- err %>%
+    mutate(age_group = ifelse(participant > 15000, 1, 0))
+
+model <- lmer(err ~ block*age_group + (1|participant), data = err)
+
+summary(model)
+### RT change----
 rt_anova <- rt_anova %>%
     mutate(participant = as.character(participant),
            block = as.character(block),
@@ -335,6 +375,55 @@ model <- ezANOVA(
 	detailed = TRUE
 )
 model
+
+rt <- rt %>%
+    mutate(age_group = ifelse(participant > 15000, 1, 0))
+
+model <- lmer(rt ~ block*age_group + (1|participant), data = rt)
+
+summary(model)
+
+### SD change----
+
+model <- ezANOVA(
+    rt_anova,
+    dv = sd,
+    wid = .(participant),
+    within = .(block),
+    between = .(age_group),
+    type = 2,
+    detailed = TRUE
+)
+model
+
+rt <- rt %>%
+    mutate(age_group = ifelse(participant > 15000, 1, 0))
+
+model <- lmer(sd ~ block*age_group + (1|participant), data = rt)
+
+summary(model)
+
+### Trial-difference----
+rt_overall <- rt_overall %>%
+    mutate(participant = as.numeric(participant)) %>%
+    mutate(type = "correct")
+rt_type_anova <- full_join(nogo_rt_anova_avg, rt_overall) %>%
+    select(-mean_rt) %>%
+    mutate(age_group = ifelse(participant > 15000, 1, 0))
+
+model <- ezANOVA(
+    rt_type_anova,
+    dv = rt_overall,
+    wid = .(participant),
+    between = .(type, age_group),
+    type = 2,
+    detailed = TRUE
+)
+model
+
+rt_type_anova_summary <- rt_type_anova %>%
+    group_by(type, age_group) %>%
+    summarise(mean = 10 * mean(rt_overall ** 2), sd = 10 * sd(rt_overall ** 2))
 
 ## Covid----
 

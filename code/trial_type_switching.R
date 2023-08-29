@@ -6,10 +6,10 @@ library(here)
 ## Column----
 
 # tt = Trial_Type
-tt_switching <- beh_data %>%
+tt_switching <- trial_data %>%
     select(participant, block, duration, Stimulus.ACC, Stimulus.RT, age_group,
-           mean_rt, sd_rt, removed_bad, trig, trial, removed_list, removed_length, removed_omission, removed_nogo, remove) %>%
-    mutate(trial = as.numeric(trial))
+           trig, observation) %>%
+    mutate(trial = as.numeric(observation))
 
 
 
@@ -29,6 +29,7 @@ repeat {
         break
     }
 }
+
 tt_switching_since <- tt_switching_since %>%
     mutate(since = ifelse(since < 0, 0, since))
 
@@ -39,8 +40,32 @@ tt_switching_since_summary <- tt_switching_since %>%
     summarise(mean = mean(Stimulus.RT)) %>%
     filter(since <= 50)
 
+tt_switching_since_summary_statistic <- tt_switching_since %>%
+    group_by(since, age_group, participant) %>%
+    summarise(n = n()) %>%
+    ungroup() %>%
+    group_by(since) %>%
+    summarise(mean = mean(n), sd = sd(n))
+    
+
 ggplot(tt_switching_since_summary) +
     geom_line(aes(x = since, y = mean, color = as.character(age_group)))
+
+tt_switching_since_anova <- tt_switching_since %>%
+    group_by(since, age_group, participant) %>%
+    summarise(mean = mean(Stimulus.RT)) %>%
+    filter(since <= 1) %>%
+    mutate(participant = as.factor(participant))
+
+model <- ezANOVA(
+    tt_switching_since_anova,
+    dv = mean,
+    wid = .(participant),
+    between = .(age_group, since),
+    type = 2,
+    detailed = TRUE
+)
+model
 
 ## Conclusion: Older age group seems to have a very high "0" bin, surpassed only after a lot of trials, indicative of
 # Potentially some post-error slowing. This can be followed up.
@@ -75,6 +100,23 @@ tt_switching_mistake_summary <- tt_switching_mistake %>%
 
 ggplot(tt_switching_mistake_summary) +
     geom_line(aes(x = since, y = mean, color = as.character(age_group)))
+
+tt_switching_mistake_anova <- tt_switching_mistake %>%
+    group_by(since, age_group, participant) %>%
+    summarise(mean = mean(Stimulus.RT)) %>%
+    filter(since <= 1) %>%
+    mutate(participant = as.factor(participant))
+
+model <- ezANOVA(
+    tt_switching_mistake_anova,
+    dv = mean,
+    wid = .(participant),
+    between = .(age_group, since),
+    type = 2,
+    detailed = TRUE
+)
+model
+
 
 # Stimulus occurence----
 
@@ -121,6 +163,22 @@ threes_reaction <- tt_switching_switch %>%
 
 ggplot(threes_reaction) +
     geom_line(aes(x = after, y = mean, color = as.character(age_group)))
+
+tt_switching_threes_anova <- tt_switching_switch %>%
+    group_by(after, age_group, participant) %>%
+    summarise(mean = mean(Stimulus.RT)) %>%
+    filter(after <= 1) %>%
+    mutate(participant = as.factor(participant))
+
+model <- ezANOVA(
+    tt_switching_threes_anova,
+    dv = mean,
+    wid = .(participant),
+    between = .(age_group, after),
+    type = 2,
+    detailed = TRUE
+)
+model
 ## This looks a little suspicious
 
 #
