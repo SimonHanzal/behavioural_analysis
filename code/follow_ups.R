@@ -331,5 +331,39 @@ t.test(erp_eye_anova$early, erp_eye_anova$late, paired=TRUE)
 
 #test anova
 
+# Beta to behaviour----
+
+# signal_motivation <- read_excel("data/290423_anova_motivation.xlsx")
+signal_motivation <- read_excel("data/290423_anova_motivation_1_short.xlsx")
+
+signal_uncorrected_motivation <- signal_motivation %>%
+    filter(type == "uncorrected")
+
+signal_corrected_motivation <- signal_motivation %>%
+    filter(type == "corrected")
+
+err_all_mot <- err_all %>%
+    mutate(ID = participant, err_change = err_9-err_8) %>%
+    ungroup() %>%
+    select(-participant, -motivation, -age_group, -block, -err_9, -err_8)
+
+correlate_alpha_moti_err <- signal_uncorrected_motivation %>%
+    inner_join(err_all_mot, by = "ID") %>%
+    filter(motivation == "motivated", ID < 15000)
+
+correlate_beta_moti_err <- signal_corrected_motivation %>%
+    inner_join(err_all_mot, by = "ID") %>%
+    filter(motivation == "motivated", ID < 15000)
 
 
+model <- lm(err_change ~ signal_change, correlate_alpha_moti_err)
+summary(model)
+plot(model)
+
+ggplot(correlate_alpha_moti_err, aes(err_change, signal_change)) +
+    geom_smooth() +
+    geom_point()
+
+model <- lm(err_change ~ signal_change, correlate_beta_moti_err)
+summary(model)
+plot(model)

@@ -4,7 +4,7 @@
 
 path <- r"(..\ie_compilation)"
 path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
-# path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+ path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
 setwd(here())
 library(tidyverse)
 library(here)

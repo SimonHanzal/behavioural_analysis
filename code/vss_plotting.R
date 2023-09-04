@@ -162,17 +162,18 @@ rt_natural_plot <- rt_natural %>%
 rt_natural_m_plot <- rt_natural_m %>%
     mutate(block = "M") %>%
     group_by(block, age_group, motivation) %>%
-    summarise(rt = mean(rt), sd = sd(rt) %>%
+    summarise(sd = sd(rt), rt = mean(rt)) %>%
     pivot_wider(names_from = motivation, values_from = rt)
 
 rt_plot <- rt_natural_plot %>%
     full_join(rt_natural_m_plot)
 
-
 p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colour =age_group, shape =age_group, group=age_group)) +
     geom_point(aes(y = as.numeric(low)), shape = "circle", size = 4) +
     geom_line(aes(y = as.numeric(low)), size = 2.3) +
     geom_line(aes(y = as.numeric(high)), linetype = "longdash", size = 2.3) +
+    #geom_errorbar(aes(ymin = as.numeric(low)-sd, ymax = low+sd))+
+    #geom_errorbar(aes(ymin = as.numeric(high)-sd, ymax = high+sd))+
     scale_colour_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     scale_fill_viridis_d(option = "B", begin = 0.25, end = 0.9, direction = -1) +
     theme_minimal() +
@@ -184,7 +185,7 @@ p <- ggplot(rt_plot, aes(x = as.factor(block), fill = as.factor(age_group), colo
     #geom_vline(xintercept=8.5, color = "black", size=1) +
     labs(x = "Block", y = "RT (ms)", fill)
 p
-png(filename="figures/rt.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
+png(filename="figures/recent_rt.png", width = 600, height = 600, units = "px", pointsize = 12, bg = "white", type="cairo")
 print(p)
 dev.off()
 

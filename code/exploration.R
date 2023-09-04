@@ -97,7 +97,8 @@ summary(model)
 model <- lm(block_change_alpha ~ block_change_beta * vas_change * age_group, neural_data)
 summary(model)
 #!!!!
-
+model <- lm(block_change_alpha ~ block_change_beta, neural_data)
+summary(model)
 
 model <- lm(wan_change ~ alpha_change, neural_data_bin)
 summary(model)

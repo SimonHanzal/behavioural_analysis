@@ -101,7 +101,8 @@ tt_switching_mistake_summary <- tt_switching_mistake %>%
 ggplot(tt_switching_mistake_summary) +
     geom_line(aes(x = since, y = mean, color = as.character(age_group)))
 
-<<<<<<< HEAD
+
+
 tt_switching_mistake_anova <- tt_switching_mistake %>%
     group_by(since, age_group, participant) %>%
     summarise(mean = mean(Stimulus.RT)) %>%
@@ -119,7 +120,6 @@ model <- ezANOVA(
 model
 
 
-=======
 ## Poster
 
 tt_switching_mistake_summary <- tt_switching_switch %>%
