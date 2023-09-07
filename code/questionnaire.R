@@ -42,9 +42,11 @@ demo_clean %>%
 age_information <- demo_clean %>%
  #   group_by(age_group) %>%
     summarise(mean = mean(`percent kept`), sd = sd(`percent kept`), median = median(`percent kept`), min = min(`percent kept`), max = max(`percent kept`), number = n())
+age_info_old <- demo_clean %>%
+    filter(demo_clean, age_group == "young")$moca
 
 # Moca
-summary(lm(moca ~ age_group, demo_clean))
+t.test(filter(demo_clean, age_group == "older")$moca, filter(demo_clean, age_group == "young")$moca)
 
 
 # Vas----

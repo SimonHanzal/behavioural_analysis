@@ -119,3 +119,6 @@ summary(model)
 model <- lm(block_change_alpha ~ err_change, filter(neural_data, participant != 10007))
 summary(model)
 
+
+model  <- lm(wan_change ~ vas_change, neural_data_bin)
+summary(model)

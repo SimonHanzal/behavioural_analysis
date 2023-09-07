@@ -360,8 +360,8 @@ model <- lm(err_change ~ signal_change, correlate_alpha_moti_err)
 summary(model)
 plot(model)
 
-ggplot(correlate_alpha_moti_err, aes(err_change, signal_change)) +
-    geom_smooth() +
+ggplot(correlate_alpha_moti_err, aes(signal_change, err_change)) +
+    geom_smooth(method = lm) +
     geom_point()
 
 model <- lm(err_change ~ signal_change, correlate_beta_moti_err)

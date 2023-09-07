@@ -3,8 +3,8 @@ library(tidyverse)
 library(readxl)
 
 here()
-#path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
-path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
+path <- r"(C:\Users\simonha\OneDrive - University of Glasgow\research\data\exp1_data\compilation)"
+#path <- r"(C:\Users\hanza\OneDrive\Dokumenty\R)"
 setwd(path)
 hemianopia_df <- read_excel("optometric.xlsx")
 
